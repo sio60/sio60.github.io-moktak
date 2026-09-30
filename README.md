@@ -36,7 +36,6 @@ npx serve .
 
 ```js
 window.INNERPEACE_CONFIG = Object.freeze({
-  instagramUrl: "https://www.instagram.com/YOUR_ACCOUNT/",
   supabaseUrl: "https://YOUR_PROJECT.supabase.co",
   supabasePublishableKey: "sb_publishable_...",
   channelName: "innerpeace-main-v1",

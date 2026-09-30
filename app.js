@@ -15,7 +15,6 @@
   const flare = document.querySelector("#impactFlare");
   const effects = document.querySelector("#effects");
   const rings = [...document.querySelectorAll(".impact-ring")];
-  const instagramLink = document.querySelector("#instagramLink");
   const form = document.querySelector("#messageForm");
   const input = document.querySelector("#messageInput");
   const charCount = document.querySelector("#charCount");
@@ -75,7 +74,6 @@
     return mote;
   });
 
-  setupInstagramLink();
   connectRealtime();
   renderTapCount();
 
@@ -475,26 +473,6 @@
       // 뒤로 가기 캐시에서 돌아오면 pageshow에서 새 채널로 다시 접속합니다.
       void leavingClient.removeChannel(leavingChannel).catch(() => {});
     }
-  }
-
-  function setupInstagramLink() {
-    const rawValue = String(config.instagramUrl ?? "").trim();
-    if (!rawValue) {
-      instagramLink.addEventListener("click", (event) => {
-        event.preventDefault();
-        showToast("인스타 계정 주소를 연결해주세요.");
-      });
-      return;
-    }
-
-    const url = rawValue.startsWith("@")
-      ? `https://www.instagram.com/${rawValue.slice(1)}/`
-      : rawValue.startsWith("http")
-        ? rawValue
-        : `https://www.instagram.com/${rawValue.replace(/^\/+|\/+$/g, "")}/`;
-    instagramLink.href = url;
-    instagramLink.target = "_blank";
-    instagramLink.rel = "noopener noreferrer";
   }
 
   function normalizeMessage(value) {

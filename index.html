@@ -13,26 +13,17 @@
     <link rel="apple-touch-icon" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/mallet.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260930-practice2" />
-    <script defer src="./config.js?v=20260930-realtime"></script>
+    <link rel="stylesheet" href="./styles.css?v=20260930-no-instagram" />
+    <script defer src="./config.js?v=20260930-no-instagram"></script>
     <script defer src="./composer-viewport.js?v=20260930-keyboard4"></script>
     <script defer src="./practice-progress.js?v=20260930-practice2"></script>
-    <script defer src="./app.js?v=20260930-practice2"></script>
+    <script defer src="./app.js?v=20260930-no-instagram"></script>
   </head>
   <body>
     <div class="app" id="app">
       <div class="ambient" aria-hidden="true"></div>
       <div class="message-sky" id="messageSky" aria-hidden="true"></div>
 
-      <header class="topbar">
-        <a class="instagram-link" id="instagramLink" href="#" aria-label="인스타그램 계정 열기">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="5" />
-            <circle cx="12" cy="12" r="4.25" />
-            <circle class="instagram-dot" cx="17.5" cy="6.6" r="1" />
-          </svg>
-        </a>
-      </header>
       <p class="online-status" id="onlineStatus" title="실시간 연결 중">
         현재 접속자: <output id="onlineCount" aria-live="off">000</output>명
       </p>

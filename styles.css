@@ -79,13 +79,6 @@ button {
   mix-blend-mode: soft-light;
 }
 
-.topbar {
-  position: fixed;
-  z-index: 20;
-  top: max(12px, env(safe-area-inset-top));
-  left: max(clamp(8px, 1.5vw, 24px), env(safe-area-inset-left));
-}
-
 .online-status {
   position: fixed;
   z-index: 20;
@@ -98,53 +91,6 @@ button {
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
   white-space: nowrap;
-}
-
-.instagram-link {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  padding: 0;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  outline: 0;
-  background: transparent;
-  color: #fff;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
-}
-
-.instagram-link:hover {
-  border-color: rgba(255, 211, 155, 0.25);
-  background: rgba(255, 173, 77, 0.07);
-}
-
-.instagram-link:active {
-  transform: scale(0.94);
-}
-
-.instagram-link:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 4px;
-}
-
-.instagram-link svg {
-  width: 34px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.85;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.instagram-link .instagram-dot {
-  fill: currentColor;
-  stroke: none;
 }
 
 main {
