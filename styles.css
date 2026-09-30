@@ -115,9 +115,7 @@ button {
 }
 
 .instagram-link:focus-visible,
-.moktak-button:focus-visible,
-.composer input:focus-visible,
-.composer button:focus-visible {
+.moktak-button:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 4px;
 }
@@ -370,65 +368,70 @@ main {
   bottom: 0;
   padding-top: 15px;
   padding-bottom: max(4px, env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, transparent, #000 28%);
+  background: #000;
 }
 
 .composer {
   display: flex;
-  gap: 8px;
-  padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  background: rgba(14, 13, 12, 0.94);
-  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.48), inset 0 1px rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(18px);
+  min-height: 54px;
+  overflow: hidden;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #080808;
+}
+
+.composer:focus-within {
+  border-color: #888;
 }
 
 .composer input {
   min-width: 0;
   flex: 1;
-  padding: 12px 10px 12px 12px;
+  padding: 14px 16px;
   border: 0;
   outline: 0;
   background: transparent;
-  color: #f8f3ee;
+  color: #fff;
   font-size: 0.9rem;
 }
 
 .composer input::placeholder {
-  color: #5e5954;
+  color: #777;
 }
 
 .composer button {
-  padding: 0 15px;
-  border: 1px solid rgba(255, 193, 117, 0.21);
-  border-radius: 13px;
+  padding: 0 16px;
+  border: 0;
+  border-left: 1px solid #333;
+  border-radius: 0;
   outline: 0;
-  background: linear-gradient(145deg, #7a3512, #4f210d);
-  color: #ffe6c6;
+  background: transparent;
+  color: #fff;
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  transition:
-    transform 140ms ease,
-    filter 140ms ease;
+  transition: background-color 140ms ease;
 }
 
 .composer button:hover {
-  filter: brightness(1.15);
+  background: #181818;
 }
 
 .composer button:active {
-  transform: scale(0.96);
+  background: #242424;
+}
+
+.composer button:focus-visible {
+  outline: 1px solid #fff;
+  outline-offset: -4px;
 }
 
 .composer-meta {
   display: flex;
   justify-content: flex-end;
   padding: 7px 5px 0;
-  color: #4f4a46;
+  color: #666;
   font-size: 0.64rem;
 }
 
@@ -436,7 +439,7 @@ footer {
   position: relative;
   z-index: 25;
   padding-top: 10px;
-  color: #3f3b38;
+  color: #555;
   font-size: 0.61rem;
   text-align: center;
 }
@@ -483,8 +486,8 @@ footer {
   padding: 10px 15px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  background: rgba(24, 20, 17, 0.94);
-  color: #d7ccc0;
+  background: #111;
+  color: #eee;
   font-size: 0.75rem;
   opacity: 0;
   pointer-events: none;
