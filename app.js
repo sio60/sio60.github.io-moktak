@@ -3,13 +3,10 @@
 
   const MAX_MESSAGE_LENGTH = 36;
   const MESSAGE_COOLDOWN_MS = 1400;
-  const STORAGE_KEY = "innerpeace:taps:v1";
-  const MUTE_KEY = "innerpeace:muted:v1";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const config = window.INNERPEACE_CONFIG ?? {};
 
   const app = document.querySelector("#app");
-  const stage = document.querySelector("#stage");
   const button = document.querySelector("#moktakButton");
   const image = document.querySelector("#moktakImage");
   const mallet = document.querySelector("#malletImage");
@@ -17,33 +14,21 @@
   const flare = document.querySelector("#impactFlare");
   const effects = document.querySelector("#effects");
   const rings = [...document.querySelectorAll(".impact-ring")];
-  const countPop = document.querySelector("#countPop");
-  const myTapCount = document.querySelector("#myTapCount");
-  const soundToggle = document.querySelector("#soundToggle");
   const instagramLink = document.querySelector("#instagramLink");
   const form = document.querySelector("#messageForm");
   const input = document.querySelector("#messageInput");
   const charCount = document.querySelector("#charCount");
   const messageSky = document.querySelector("#messageSky");
   const toast = document.querySelector("#toast");
-  const srStatus = document.querySelector("#srStatus");
 
-  const today = new Date().toLocaleDateString("sv-SE");
   const clientId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const savedTaps = readJson(STORAGE_KEY, { date: today, count: 0 });
 
-  let taps = savedTaps.date === today ? Math.max(0, Number(savedTaps.count) || 0) : 0;
-  let muted = localStorage.getItem(MUTE_KEY) === "true";
-  let audioContext = null;
-  let compressor = null;
-  let noiseBuffer = null;
   let ringIndex = 0;
   let particleIndex = 0;
   let lastPointerStrike = 0;
   let lastMessageAt = 0;
   let lastTapAt = 0;
   let combo = 0;
-  let announceTimer = 0;
   let toastTimer = 0;
   let channel = null;
   let connected = false;
@@ -67,8 +52,6 @@
     return particle;
   });
 
-  updateTapCount(false);
-  updateMuteUI();
   setupInstagramLink();
   connectRealtime();
 
@@ -86,16 +69,6 @@
 
   button.addEventListener("keydown", (event) => {
     if (event.key === " " || event.key === "Enter") event.preventDefault();
-  });
-
-  soundToggle.addEventListener("click", () => {
-    muted = !muted;
-    localStorage.setItem(MUTE_KEY, String(muted));
-    updateMuteUI();
-    if (!muted) {
-      ensureAudio();
-      playMoktakSound(0);
-    }
   });
 
   input.addEventListener("input", () => {
@@ -137,9 +110,7 @@
   });
 
   function beginStrike() {
-    ensureAudio();
     animateMallet();
-    playMoktakSound(0.038);
     window.setTimeout(registerImpact, 38);
   }
 
@@ -147,9 +118,6 @@
     const now = performance.now();
     combo = now - lastTapAt < 330 ? Math.min(combo + 1, 24) : 1;
     lastTapAt = now;
-    taps += 1;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today, count: taps }));
-    updateTapCount(true);
 
     spring.y = Math.min(6.2, spring.y + 3.4);
     spring.vy -= 2.4 + Math.min(combo * 0.05, 0.7);
@@ -170,11 +138,6 @@
       navigator.vibrate(8);
       registerImpact.lastVibrate = now;
     }
-
-    clearTimeout(announceTimer);
-    announceTimer = window.setTimeout(() => {
-      srStatus.textContent = `오늘 목탁을 ${formatNumber(taps)}번 쳤습니다.`;
-    }, 900);
   }
 
   function animateMallet() {
@@ -230,16 +193,6 @@
         { opacity: 0, transform: "translateX(34%)" },
       ],
       { duration: 430, easing: "ease-out" },
-    );
-
-    countPop.getAnimations().forEach((animation) => animation.cancel());
-    countPop.animate(
-      [
-        { opacity: 0, transform: "translate(-50%, 5px) scale(.7)" },
-        { opacity: 1, transform: "translate(-50%, -5px) scale(1.08)", offset: 0.25 },
-        { opacity: 0, transform: "translate(-50%, -27px) scale(.92)" },
-      ],
-      { duration: 520, easing: "cubic-bezier(.12,.65,.3,1)" },
     );
   }
 
@@ -302,96 +255,6 @@
       image.style.transform = "";
       app.style.setProperty("--heat", "0");
     }
-  }
-
-  function ensureAudio() {
-    if (muted) return;
-    if (!audioContext) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      audioContext = new AudioContext();
-      compressor = audioContext.createDynamicsCompressor();
-      compressor.threshold.value = -16;
-      compressor.knee.value = 15;
-      compressor.ratio.value = 6;
-      compressor.attack.value = 0.002;
-      compressor.release.value = 0.18;
-      compressor.connect(audioContext.destination);
-      noiseBuffer = createNoiseBuffer(audioContext, 0.045);
-    }
-    if (audioContext.state === "suspended") audioContext.resume();
-  }
-
-  function playMoktakSound(delaySeconds) {
-    if (muted || !audioContext || !compressor) return;
-    const start = audioContext.currentTime + delaySeconds;
-    const pitch = 0.97 + Math.random() * 0.06;
-
-    const body = audioContext.createOscillator();
-    const bodyGain = audioContext.createGain();
-    body.type = "sine";
-    body.frequency.setValueAtTime(430 * pitch, start);
-    body.frequency.exponentialRampToValueAtTime(245 * pitch, start + 0.19);
-    bodyGain.gain.setValueAtTime(0.0001, start);
-    bodyGain.gain.exponentialRampToValueAtTime(0.28, start + 0.003);
-    bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.27);
-    body.connect(bodyGain).connect(compressor);
-    body.start(start);
-    body.stop(start + 0.29);
-
-    const resonance = audioContext.createOscillator();
-    const resonanceGain = audioContext.createGain();
-    resonance.type = "triangle";
-    resonance.frequency.setValueAtTime(176 * pitch, start);
-    resonance.frequency.exponentialRampToValueAtTime(132 * pitch, start + 0.34);
-    resonanceGain.gain.setValueAtTime(0.0001, start);
-    resonanceGain.gain.exponentialRampToValueAtTime(0.12, start + 0.006);
-    resonanceGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.4);
-    resonance.connect(resonanceGain).connect(compressor);
-    resonance.start(start);
-    resonance.stop(start + 0.42);
-
-    const click = audioContext.createBufferSource();
-    const clickFilter = audioContext.createBiquadFilter();
-    const clickGain = audioContext.createGain();
-    click.buffer = noiseBuffer;
-    clickFilter.type = "bandpass";
-    clickFilter.frequency.value = 1250 + Math.random() * 280;
-    clickFilter.Q.value = 1.3;
-    clickGain.gain.setValueAtTime(0.13, start);
-    clickGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.042);
-    click.connect(clickFilter).connect(clickGain).connect(compressor);
-    click.start(start);
-  }
-
-  function createNoiseBuffer(context, seconds) {
-    const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * seconds), context.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let index = 0; index < data.length; index += 1) {
-      data[index] = Math.random() * 2 - 1;
-    }
-    return buffer;
-  }
-
-  function updateTapCount(animate) {
-    myTapCount.textContent = formatNumber(taps);
-    if (animate && !reducedMotion) {
-      myTapCount.getAnimations().forEach((animation) => animation.cancel());
-      myTapCount.animate(
-        [
-          { transform: "translateY(0) scale(1)", color: "#fff6ec" },
-          { transform: "translateY(-2px) scale(1.18)", color: "#ffd39b", offset: 0.35 },
-          { transform: "translateY(0) scale(1)", color: "#fff6ec" },
-        ],
-        { duration: 220, easing: "ease-out" },
-      );
-    }
-  }
-
-  function updateMuteUI() {
-    soundToggle.classList.toggle("is-muted", muted);
-    soundToggle.setAttribute("aria-pressed", String(muted));
-    soundToggle.setAttribute("aria-label", muted ? "소리 켜기" : "소리 끄기");
   }
 
   function spawnMessage(text, mine = false) {
@@ -484,17 +347,5 @@
     toast.classList.add("is-visible");
     clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => toast.classList.remove("is-visible"), 1700);
-  }
-
-  function readJson(key, fallback) {
-    try {
-      return JSON.parse(localStorage.getItem(key)) ?? fallback;
-    } catch {
-      return fallback;
-    }
-  }
-
-  function formatNumber(value) {
-    return new Intl.NumberFormat("ko-KR").format(value);
   }
 })();

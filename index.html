@@ -13,9 +13,9 @@
     <link rel="apple-touch-icon" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/mallet.png" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260930-layout" />
     <script defer src="./config.js"></script>
-    <script defer src="./app.js"></script>
+    <script defer src="./app.js?v=20260930-layout"></script>
   </head>
   <body>
     <div class="app" id="app">
@@ -30,16 +30,6 @@
             <circle class="instagram-dot" cx="17.5" cy="6.6" r="1" />
           </svg>
         </a>
-        <button class="icon-button" id="soundToggle" type="button" aria-label="소리 끄기" aria-pressed="false">
-          <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 9v6h4l5 4V5L8 9H4Z" />
-            <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
-          </svg>
-          <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 9v6h4l5 4V5L8 9H4Z" />
-            <path d="m17 9 4 4m0-4-4 4" />
-          </svg>
-        </button>
       </header>
 
       <main>
@@ -50,13 +40,6 @@
         </section>
 
         <section class="stage" id="stage" aria-label="목탁 수련 공간">
-          <div class="stats" aria-label="수련 현황">
-            <div class="stat">
-              <span class="stat-label">내 타수</span>
-              <strong id="myTapCount">0</strong>
-            </div>
-          </div>
-
           <div class="moktak-scene" id="moktakScene">
             <div class="aura aura-outer" aria-hidden="true"></div>
             <div class="aura aura-inner" aria-hidden="true"></div>
@@ -91,7 +74,6 @@
               <span class="impact-ring"></span>
               <span class="impact-ring"></span>
               <span class="impact-ring"></span>
-              <span class="count-pop" id="countPop">+1</span>
             </div>
           </div>
 
@@ -121,7 +103,6 @@
       <footer>실명과 회사명은 두고, 번뇌만 올려보내세요.</footer>
 
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
-      <div class="sr-only" id="srStatus" aria-live="polite"></div>
     </div>
   </body>
 </html>
