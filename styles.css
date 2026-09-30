@@ -346,9 +346,10 @@ main {
 }
 
 .tap-count {
+  display: block;
   position: relative;
   z-index: 14;
-  margin: -6px 0 0;
+  margin: 12px 0 0;
   color: #fff;
   font-size: clamp(1.25rem, 4vw, 1.5rem);
   font-weight: 500;
