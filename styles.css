@@ -209,29 +209,12 @@ main {
 }
 
 .practice-status p {
-  margin: 0 0 8px;
+  margin: 0;
   min-height: 1.4em;
   color: #a3998c;
   font-size: 0.67rem;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
-}
-
-.practice-meter {
-  width: 100%;
-  height: 2px;
-  overflow: hidden;
-  background: #252019;
-  border-radius: 2px;
-}
-
-.practice-meter span {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, #856641, #e8c488);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 180ms ease-out;
 }
 
 .practice-vision {
@@ -297,36 +280,6 @@ main {
   background: #ffe0a0;
   box-shadow: 0 0 9px #edb352;
   opacity: 0;
-}
-
-.practice-reward {
-  position: absolute;
-  z-index: 16;
-  bottom: 6px;
-  left: 0;
-  right: 0;
-  min-height: 44px;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  text-shadow: 0 2px 14px #000, 0 0 20px #000;
-}
-
-.practice-reward strong,
-.practice-reward span {
-  display: block;
-}
-
-.practice-reward strong {
-  color: #e9c892;
-  font-size: 0.87rem;
-  font-weight: 500;
-}
-
-.practice-reward span {
-  margin-top: 7px;
-  color: #b8a994;
-  font-size: 0.65rem;
 }
 
 .moktak-scene {
@@ -793,8 +746,7 @@ footer {
   }
 
   .buddha-image,
-  .buddha-halo,
-  .practice-meter span {
+  .buddha-halo {
     transition: none;
   }
 

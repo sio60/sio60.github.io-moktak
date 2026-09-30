@@ -26,10 +26,10 @@
 
     return {
       count,
-      reveal: Math.min(count / ROUND_LENGTH, 1),
+      reveal: withinRound / ROUND_LENGTH,
       completedRounds,
       remaining: ROUND_LENGTH - withinRound,
-      cycleProgress: count > 0 && withinRound === 0 ? 1 : withinRound / ROUND_LENGTH,
+      cycleProgress: withinRound / ROUND_LENGTH,
       nextTarget: (completedRounds + 1) * ROUND_LENGTH,
     };
   }

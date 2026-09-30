@@ -25,22 +25,46 @@ test("the figure progressively appears before the first 108 taps", () => {
   }
 });
 
-test("exact completions retain full progress and point to the next round", () => {
+test("exact completions hide the statue and reset progress for the next round", () => {
   for (const count of [108, 216, 324, 1080]) {
     assert.deepEqual(getPracticeProgress(count), {
-      count, reveal: 1, completedRounds: count / 108,
-      remaining: 108, cycleProgress: 1, nextTarget: count + 108,
+      count, reveal: 0, completedRounds: count / 108,
+      remaining: 108, cycleProgress: 0, nextTarget: count + 108,
     });
   }
 });
 
-test("the statue stays revealed while subsequent rounds restart", () => {
+test("the statue begins appearing again as subsequent rounds restart", () => {
   assert.deepEqual(getPracticeProgress(109), {
-    count: 109, reveal: 1, completedRounds: 1,
+    count: 109, reveal: 1 / 108, completedRounds: 1,
     remaining: 107, cycleProgress: 1 / 108, nextTarget: 216,
   });
-  assert.equal(getPracticeProgress(215).remaining, 1);
-  assert.equal(getPracticeProgress(217).nextTarget, 324);
+  assert.deepEqual(getPracticeProgress(217), {
+    count: 217, reveal: 1 / 108, completedRounds: 2,
+    remaining: 107, cycleProgress: 1 / 108, nextTarget: 324,
+  });
+});
+
+test("107→108→109 and 215→216→217 each reveal, reset, then begin again", () => {
+  for (const completion of [108, 216]) {
+    const before = getPracticeProgress(completion - 1);
+    const exact = getPracticeProgress(completion);
+    const after = getPracticeProgress(completion + 1);
+    assert.deepEqual([before.reveal, exact.reveal, after.reveal], [107 / 108, 0, 1 / 108]);
+    assert.deepEqual([before.cycleProgress, exact.cycleProgress, after.cycleProgress], [107 / 108, 0, 1 / 108]);
+    assert.deepEqual([before.remaining, exact.remaining, after.remaining], [1, 108, 107]);
+    assert.equal(getMilestone(completion - 1, completion).kind, "complete");
+    assert.equal(getMilestone(completion, completion + 1), null);
+  }
+});
+
+test("restored counts retain only the current round's reveal without rewarding again", () => {
+  for (const [count, expectedReveal] of [[36, 1 / 3], [162, 1 / 2], [252, 1 / 3], [108, 0], [216, 0], [324, 0]]) {
+    const progress = getPracticeProgress(count);
+    assert.equal(progress.reveal, expectedReveal);
+    assert.equal(progress.cycleProgress, expectedReveal);
+    assert.equal(getMilestone(count, count), null);
+  }
 });
 
 test("invalid counts stay safe and do not throw or coerce objects", () => {
@@ -123,6 +147,6 @@ test("classic browser script exposes the API without requiring Node or DOM", () 
   const api = browser.window.InnerpeacePracticeProgress;
   assert.equal(typeof api.getPracticeProgress, "function");
   assert.equal(typeof api.getMilestone, "function");
-  assert.equal(api.getPracticeProgress(108).reveal, 1);
+  assert.equal(api.getPracticeProgress(108).reveal, 0);
   assert.equal(api.getMilestone(107, 108).kind, "complete");
 });

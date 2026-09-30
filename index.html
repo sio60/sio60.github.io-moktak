@@ -13,11 +13,11 @@
     <link rel="apple-touch-icon" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/mallet.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260930-practice1" />
+    <link rel="stylesheet" href="./styles.css?v=20260930-practice2" />
     <script defer src="./config.js?v=20260930-realtime"></script>
     <script defer src="./composer-viewport.js?v=20260930-keyboard4"></script>
-    <script defer src="./practice-progress.js?v=20260930-practice1"></script>
-    <script defer src="./app.js?v=20260930-practice1"></script>
+    <script defer src="./practice-progress.js?v=20260930-practice2"></script>
+    <script defer src="./app.js?v=20260930-practice2"></script>
   </head>
   <body>
     <div class="app" id="app">
@@ -44,10 +44,7 @@
           <p class="intro-copy">오늘 회사에서 삼킨 말을 잠깐 내려놓고 가세요.</p>
           <output class="tap-count" id="myTapCount" aria-label="오늘 목탁 타수" aria-live="off">0</output>
           <div class="practice-status">
-            <p id="practiceHint">108번 두드리면 빛이 퍼집니다.</p>
-            <div class="practice-meter" id="practiceMeter" role="progressbar" aria-label="108타 수련 진행도" aria-valuemin="0" aria-valuemax="108" aria-valuenow="0">
-              <span id="practiceFill"></span>
-            </div>
+            <p id="practiceHint">0회 수련</p>
           </div>
         </section>
 
@@ -94,9 +91,8 @@
               <span class="impact-ring"></span>
             </div>
           </div>
-          <div class="practice-reward" id="practiceReward" role="status" aria-live="polite">
+          <div class="sr-only" id="practiceReward" role="status" aria-live="polite">
             <strong id="practiceRewardTitle"></strong>
-            <span id="practiceRewardDetail"></span>
           </div>
         </section>
       </main>

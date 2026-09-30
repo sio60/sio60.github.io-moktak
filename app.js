@@ -27,11 +27,7 @@
   const practice = window.InnerpeacePracticeProgress;
   const practiceVision = document.querySelector("#practiceVision");
   const practiceHint = document.querySelector("#practiceHint");
-  const practiceMeter = document.querySelector("#practiceMeter");
-  const practiceFill = document.querySelector("#practiceFill");
-  const practiceReward = document.querySelector("#practiceReward");
   const practiceRewardTitle = document.querySelector("#practiceRewardTitle");
-  const practiceRewardDetail = document.querySelector("#practiceRewardDetail");
   const practiceWave = document.querySelector("#practiceWave");
   const practiceMotes = document.querySelector("#practiceMotes");
 
@@ -206,24 +202,13 @@
   function renderPractice() {
     const progress = practice.getPracticeProgress(dailyTaps.count);
     practiceVision.style.setProperty("--reveal", progress.reveal.toFixed(4));
-    practiceFill.style.transform = `scaleX(${progress.cycleProgress})`;
-    practiceMeter.setAttribute("aria-valuenow", String(Math.round(progress.cycleProgress * 108)));
-    practiceHint.textContent = progress.count === 0
-      ? "108번 두드리면 빛이 퍼집니다."
-      : progress.completedRounds > 0 && progress.cycleProgress === 1
-        ? `${progress.completedRounds}회 수련 완료. 한 번 더 두드려보세요.`
-        : `${progress.completedRounds > 0 ? `${progress.completedRounds}회 수련 | ` : ""}빛이 퍼지기까지 ${progress.remaining}번`;
+    practiceHint.textContent = `${progress.completedRounds}회 수련`;
   }
 
   function celebratePractice(milestone) {
-    practiceRewardTitle.textContent = milestone.title;
-    practiceRewardDetail.textContent = milestone.detail;
-    practiceReward.getAnimations().forEach((animation) => animation.cancel());
-    practiceReward.animate(
-      [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.78 }, { opacity: 0 }],
-      { duration: 3600, easing: "ease-in-out" },
-    );
-    if (milestone.kind !== "complete" || reducedMotion) return;
+    if (milestone.kind !== "complete") return;
+    practiceRewardTitle.textContent = `${Math.floor(milestone.count / 108)}회 수련 완료`;
+    if (reducedMotion) return;
     // A single slow wave gives feedback without rapidly flashing the screen.
     practiceWave.getAnimations().forEach((animation) => animation.cancel());
     practiceWave.animate(
