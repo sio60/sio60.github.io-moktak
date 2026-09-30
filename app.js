@@ -22,6 +22,8 @@
   const messageSky = document.querySelector("#messageSky");
   const toast = document.querySelector("#toast");
   const myTapCount = document.querySelector("#myTapCount");
+  const onlineCount = document.querySelector("#onlineCount");
+  const onlineStatus = document.querySelector("#onlineStatus");
 
   const clientId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -32,8 +34,12 @@
   let lastTapAt = 0;
   let combo = 0;
   let toastTimer = 0;
+  let realtimeClient = null;
   let channel = null;
   let connected = false;
+  let connecting = false;
+  let pageActive = true;
+  let connectionAttempt = 0;
 
   const spring = {
     y: 0,
@@ -57,6 +63,21 @@
   setupInstagramLink();
   connectRealtime();
   renderTapCount();
+
+  window.addEventListener("pagehide", () => {
+    pageActive = false;
+    disconnectRealtime();
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    pageActive = true;
+    connectRealtime();
+  });
+
+  window.addEventListener("online", () => {
+    if (!channel) connectRealtime();
+  });
 
   button.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -103,6 +124,8 @@
       } catch {
         showToast("내 화면에만 흘려보냈어요.");
       }
+    } else {
+      showToast("아직 연결되지 않아 내 화면에만 보여요.");
     }
   });
 
@@ -309,38 +332,96 @@
   }
 
   async function connectRealtime() {
+    if (!pageActive || connecting || channel) return;
     if (!config.supabaseUrl || !config.supabasePublishableKey) {
       connected = false;
+      renderOnlineCount(null);
       return;
     }
 
+    const attempt = ++connectionAttempt;
+    connecting = true;
+
     try {
       const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-      const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey, {
+      if (!pageActive || attempt !== connectionAttempt) return;
+
+      realtimeClient ??= createClient(config.supabaseUrl, config.supabasePublishableKey, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
 
-      channel = supabase.channel(config.channelName || "innerpeace-main-v1", {
-        config: { broadcast: { self: false, ack: true } },
+      const currentChannel = realtimeClient.channel(config.channelName || "innerpeace-main-v1", {
+        config: {
+          broadcast: { self: false, ack: true },
+          presence: { key: clientId },
+        },
       });
+      channel = currentChannel;
 
-      channel
+      const isCurrentConnection = () => pageActive && channel === currentChannel;
+      const syncOnlineCount = () => {
+        if (!isCurrentConnection() || !connected) return;
+        const presences = Object.values(currentChannel.presenceState());
+        renderOnlineCount(presences.filter((entries) => entries.length > 0).length);
+      };
+
+      currentChannel
+        .on("presence", { event: "sync" }, syncOnlineCount)
         .on("broadcast", { event: "message" }, ({ payload }) => {
-          if (!payload || payload.from === clientId) return;
+          if (!isCurrentConnection() || !payload || typeof payload.text !== "string" || payload.from === clientId) return;
           const text = normalizeMessage(payload.text);
           if (text) spawnMessage(text, false);
         })
-        .subscribe((status) => {
+        .subscribe(async (status) => {
+          if (!isCurrentConnection()) return;
           if (status === "SUBSCRIBED") {
             connected = true;
+            try {
+              // 접속할 때만 알립니다. 목탁을 두드리거나 글을 쓸 때는 갱신하지 않습니다.
+              const result = await currentChannel.track({ online_at: new Date().toISOString() });
+              if (!isCurrentConnection() || !connected) return;
+              if (result === "ok") syncOnlineCount();
+              else renderOnlineCount(null);
+            } catch {
+              if (isCurrentConnection()) renderOnlineCount(null);
+            }
           } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             connected = false;
+            renderOnlineCount(null);
           }
         });
     } catch (error) {
+      if (attempt !== connectionAttempt) return;
       console.warn("Realtime connection failed; continuing in solo mode.", error);
       channel = null;
       connected = false;
+      renderOnlineCount(null);
+    } finally {
+      if (attempt === connectionAttempt) connecting = false;
+    }
+  }
+
+  function renderOnlineCount(count) {
+    if (!onlineCount) return;
+    onlineCount.textContent = count === null ? "—" : String(count).padStart(3, "0");
+    (onlineStatus ?? onlineCount).title = count === null
+      ? "실시간 연결을 확인하고 있어요."
+      : "현재 연결된 페이지 수예요. 같은 사람의 여러 탭은 각각 집계돼요.";
+  }
+
+  function disconnectRealtime() {
+    connectionAttempt += 1;
+    connecting = false;
+    connected = false;
+    renderOnlineCount(null);
+
+    const leavingChannel = channel;
+    const leavingClient = realtimeClient;
+    channel = null;
+    realtimeClient = null;
+    if (leavingChannel && leavingClient) {
+      // 뒤로 가기 캐시에서 돌아오면 pageshow에서 새 채널로 다시 접속합니다.
+      void leavingClient.removeChannel(leavingChannel).catch(() => {});
     }
   }
 

@@ -86,6 +86,20 @@ button {
   left: max(clamp(8px, 1.5vw, 24px), env(safe-area-inset-left));
 }
 
+.online-status {
+  position: fixed;
+  z-index: 20;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(clamp(12px, 1.5vw, 24px), env(safe-area-inset-right));
+  margin: 0;
+  color: #fff;
+  font-size: clamp(0.6875rem, 2.8vw, 0.8125rem);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 .instagram-link {
   display: grid;
   width: 52px;

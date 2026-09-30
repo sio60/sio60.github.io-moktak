@@ -13,9 +13,9 @@
     <link rel="apple-touch-icon" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/mallet.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260930-title-count" />
-    <script defer src="./config.js"></script>
-    <script defer src="./app.js?v=20260930-count"></script>
+    <link rel="stylesheet" href="./styles.css?v=20260930-realtime" />
+    <script defer src="./config.js?v=20260930-realtime"></script>
+    <script defer src="./app.js?v=20260930-realtime"></script>
   </head>
   <body>
     <div class="app" id="app">
@@ -31,6 +31,9 @@
           </svg>
         </a>
       </header>
+      <p class="online-status" id="onlineStatus" title="실시간 연결 중">
+        현재 접속자: <output id="onlineCount" aria-live="off">000</output>명
+      </p>
 
       <main>
         <section class="intro" aria-labelledby="tagline">

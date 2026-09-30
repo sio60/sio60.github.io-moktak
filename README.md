@@ -18,14 +18,16 @@ npx serve .
 - 햅틱, 충격파, 광택, 나무 파편 효과 (소리 없음)
 - 제목의 안내 문구 아래에 흰색 숫자로만 표시되는 내 타수 (날짜별로 브라우저에 저장)
 - 익명 한마디는 화면 아래에서 위로 떠오른 뒤 사라짐
-- Supabase 설정 전에는 혼자 사용하는 모드로 동작
-- Supabase 설정 후에는 DB 저장 없이 메시지만 실시간 공유
+- Supabase Broadcast로 DB 저장 없이 메시지 실시간 공유 (이전 대화는 남지 않음)
+- 오른쪽 상단 끝에 Presence 기반 현재 접속 수 표시 (`현재 접속자: 001명`)
+- 접속 수는 열린 페이지 연결 기준으로, 같은 사람이 탭을 여러 개 열면 각각 집계
+- 연결이 끊기면 접속 수는 `—`로 표시하고 메시지는 내 화면에만 표시
 - 타격 애니메이션은 각 사용자 화면에서만 처리
 - 별도 데이터베이스 테이블과 빌드 과정 없음
 
 ## 실시간 연결
 
-Supabase 프로젝트의 Realtime 기능만 사용하며 Postgres 테이블은 만들지 않습니다. `config.js`의 두 값을 채우면 됩니다.
+서울 리전의 `innerpeace-moktak` 프로젝트에 연결되어 있습니다. Supabase의 Broadcast와 Presence만 사용하며 Postgres 테이블은 만들지 않습니다. 다른 프로젝트로 바꾸려면 `config.js`의 두 값을 변경합니다. 값을 비우면 로컬 모드로 동작합니다.
 
 ```js
 window.INNERPEACE_CONFIG = Object.freeze({
@@ -38,6 +40,8 @@ window.INNERPEACE_CONFIG = Object.freeze({
 
 Publishable Key는 브라우저에서 사용하는 공개 키입니다. Secret Key 또는 Service Role Key를 넣으면 안 됩니다.
 
+이 앱은 로그인 없는 공개 채널입니다. 채널 이름은 접근 제어 수단이 아니며, 개인정보나 비밀을 보내면 안 됩니다. 화면의 글자 수 제한과 전송 간격은 클라이언트 제한이므로 악의적인 접근을 막는 서버 측 제한은 아닙니다. 무료 플랜에도 실시간 연결·메시지 사용량 한도가 있으니 공개 후 Supabase 사용량을 확인하세요.
+
 ## GitHub Pages
 
 이 폴더의 파일을 저장소 루트에 올린 뒤 GitHub 저장소의 `Settings → Pages`에서 `Deploy from a branch`, `main`, `/ (root)`를 선택하면 됩니다. 모든 경로가 상대 경로라 `username.github.io/repository-name/`에서도 동작합니다.
@@ -47,6 +51,6 @@ Publishable Key는 브라우저에서 사용하는 공개 키입니다. Secret K
 - `index.html`: 화면 구조
 - `styles.css`: 검은 배경과 반응형 UI, 이펙트
 - `app.js`: 목탁 애니메이션·메시지·Realtime
-- `config.js`: 선택적 Supabase 연결 정보
+- `config.js`: 공개 Supabase 연결 정보
 - `assets/moktak.png`: 투명 배경 목탁 이미지
 - `assets/mallet.png`: 투명 배경 채 이미지
