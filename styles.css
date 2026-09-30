@@ -542,6 +542,23 @@ footer {
   transform: translate(-50%, 0);
 }
 
+.keyboard-debug {
+  position: fixed;
+  z-index: 100;
+  top: 60px;
+  left: 8px;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #666;
+  border-radius: 4px;
+  background: #161616;
+  color: #fff;
+  font: 11px/1.4 monospace;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
 .sr-only {
   position: absolute !important;
   width: 1px !important;
