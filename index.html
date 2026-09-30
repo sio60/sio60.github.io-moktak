@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
@@ -13,8 +13,9 @@
     <link rel="apple-touch-icon" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/mallet.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260930-no-outline" />
+    <link rel="stylesheet" href="./styles.css?v=20260930-keyboard" />
     <script defer src="./config.js?v=20260930-realtime"></script>
+    <script defer src="./composer-viewport.js?v=20260930-keyboard"></script>
     <script defer src="./app.js?v=20260930-realtime"></script>
   </head>
   <body>
@@ -84,24 +85,27 @@
         </section>
       </main>
 
-      <section class="composer-wrap" aria-label="익명 한마디 남기기">
-        <form class="composer" id="messageForm" autocomplete="off">
-          <label class="sr-only" for="messageInput">오늘 회사에서 삼킨 말</label>
-          <input
-            id="messageInput"
-            name="message"
-            type="text"
-            inputmode="text"
-            maxlength="36"
-            placeholder="오늘 회사에서 삼킨 말…"
-            aria-describedby="composerHint"
-          />
-          <button type="submit">흘려보내기</button>
-        </form>
-        <div class="composer-meta" id="composerHint">
-          <span id="charCount">0 / 36</span>
-        </div>
-      </section>
+      <div class="composer-slot">
+        <section class="composer-wrap" aria-label="익명 한마디 남기기">
+          <form class="composer" id="messageForm" autocomplete="off">
+            <label class="sr-only" for="messageInput">오늘 회사에서 삼킨 말</label>
+            <input
+              id="messageInput"
+              name="message"
+              type="text"
+              inputmode="text"
+              enterkeyhint="send"
+              maxlength="36"
+              placeholder="오늘 회사에서 삼킨 말…"
+              aria-describedby="composerHint"
+            />
+            <button type="submit">흘려보내기</button>
+          </form>
+          <div class="composer-meta" id="composerHint">
+            <span id="charCount">0 / 36</span>
+          </div>
+        </section>
+      </div>
 
       <footer>실명과 회사명은 두고, 번뇌만 올려보내세요.</footer>
 

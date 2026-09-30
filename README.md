@@ -18,6 +18,7 @@ npx serve .
 - 햅틱, 충격파, 광택, 나무 파편 효과 (소리 없음)
 - 제목의 안내 문구 아래에 흰색 숫자로만 표시되는 내 타수 (날짜별로 브라우저에 저장)
 - 익명 한마디는 화면 아래에서 위로 떠오른 뒤 사라짐
+- 모바일 입력 중에는 보이는 화면 높이에 맞춰 입력창과 메시지 시작 위치를 키보드 위로 이동
 - Supabase Broadcast로 DB 저장 없이 메시지 실시간 공유 (이전 대화는 남지 않음)
 - 오른쪽 상단 끝에 Presence 기반 현재 접속 수 표시 (`현재 접속자: 001명`)
 - 접속 수는 열린 페이지 연결 기준으로, 같은 사람이 탭을 여러 개 열면 각각 집계
@@ -51,6 +52,11 @@ Publishable Key는 브라우저에서 사용하는 공개 키입니다. Secret K
 - `index.html`: 화면 구조
 - `styles.css`: 검은 배경과 반응형 UI, 이펙트
 - `app.js`: 목탁 애니메이션·메시지·Realtime
+- `composer-viewport.js`: 모바일 키보드와 입력창 위치 동기화
 - `config.js`: 공개 Supabase 연결 정보
 - `assets/moktak.png`: 투명 배경 목탁 이미지
 - `assets/mallet.png`: 투명 배경 채 이미지
+
+## 키보드 회귀 테스트
+
+`node --test tests/composer-viewport.test.cjs`로 표시 영역 축소, 화면 이동, 포커스와 전송 버튼 처리를 확인합니다. DOM 모형 기반 테스트이므로 실제 Android/iOS 및 Instagram 내장 브라우저에서 키보드 열기·닫기 확인도 필요합니다.

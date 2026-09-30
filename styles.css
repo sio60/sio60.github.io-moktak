@@ -375,6 +375,11 @@ main {
   text-align: center;
 }
 
+.composer-slot {
+  flex-shrink: 0;
+  width: 100%;
+}
+
 .composer-wrap {
   position: sticky;
   z-index: 30;
@@ -382,6 +387,28 @@ main {
   padding-top: 15px;
   padding-bottom: max(4px, env(safe-area-inset-bottom));
   background: #000;
+}
+
+/* Keep the normal layout in place while docking only the input above the OSK. */
+.app.is-composing .composer-slot {
+  min-height: var(--composer-height);
+}
+
+.app.is-composing .composer-wrap {
+  position: fixed;
+  left: var(--composer-left);
+  bottom: var(--composer-inset, 0px);
+  width: var(--composer-width);
+  padding-top: 8px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.app.is-composing.has-keyboard-inset .composer-wrap {
+  padding-bottom: 8px;
+}
+
+.app.is-composing .composer-meta {
+  display: none;
 }
 
 .composer {
@@ -405,7 +432,7 @@ main {
   outline: 0;
   background: transparent;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .composer input::placeholder {
@@ -469,7 +496,7 @@ footer {
   --drift: 0px;
   --float-duration: 12s;
   position: absolute;
-  bottom: max(96px, calc(env(safe-area-inset-bottom) + 78px));
+  bottom: var(--message-bottom, max(96px, calc(env(safe-area-inset-bottom) + 78px)));
   max-width: min(58vw, 380px);
   padding: 4px 0;
   color: rgba(255, 255, 255, 0.82);
@@ -493,7 +520,7 @@ footer {
 .toast {
   position: fixed;
   z-index: 60;
-  bottom: max(118px, calc(env(safe-area-inset-bottom) + 104px));
+  bottom: calc(var(--message-bottom, max(96px, calc(env(safe-area-inset-bottom) + 82px))) + 22px);
   left: 50%;
   max-width: calc(100vw - 40px);
   padding: 10px 15px;
@@ -550,7 +577,7 @@ footer {
   }
   100% {
     opacity: 0;
-    transform: translate3d(calc(-50% + var(--drift)), -92vh, 0) scale(1.04);
+    transform: translate3d(calc(-50% + var(--drift)), var(--float-distance, -92vh), 0) scale(1.04);
   }
 }
 
@@ -594,7 +621,7 @@ footer {
 }
 
 @media (min-width: 720px) {
-  .composer-wrap {
+  .composer-slot {
     width: min(100%, 610px);
     align-self: center;
   }
