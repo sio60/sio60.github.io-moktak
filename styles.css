@@ -128,8 +128,7 @@ button {
   transform: scale(0.94);
 }
 
-.instagram-link:focus-visible,
-.moktak-button:focus-visible {
+.instagram-link:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 4px;
 }
@@ -281,6 +280,10 @@ main {
   transform-origin: 50% 62%;
   will-change: transform;
   filter: drop-shadow(0 22px 25px rgba(0, 0, 0, 0.58)) drop-shadow(0 0 10px rgba(255, 116, 32, 0.08));
+}
+
+.moktak-button:focus-visible .moktak-image {
+  filter: brightness(1.18) drop-shadow(0 22px 25px rgba(0, 0, 0, 0.58)) drop-shadow(0 0 10px rgba(255, 116, 32, 0.08));
 }
 
 .moktak-shine {
