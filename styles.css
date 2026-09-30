@@ -48,7 +48,7 @@ button {
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: max(20px, env(safe-area-inset-top)) clamp(18px, 5vw, 38px)
+  padding: max(16px, env(safe-area-inset-top)) clamp(18px, 5vw, 38px)
     max(18px, env(safe-area-inset-bottom));
   isolation: isolate;
 }
@@ -143,7 +143,7 @@ main {
 }
 
 .intro {
-  margin-top: clamp(36px, 4vh, 52px);
+  margin-top: 0;
   text-align: center;
 }
 
@@ -345,21 +345,16 @@ main {
   transform: translate(-50%, -50%);
 }
 
-.tap-hint {
+.tap-count {
   position: relative;
   z-index: 14;
-  margin: -18px 0 0;
-  color: #645c55;
-  font-size: 0.74rem;
-  font-weight: 620;
-  letter-spacing: -0.015em;
-}
-
-.tap-hint span {
-  display: inline-block;
-  margin-right: 4px;
-  color: #8c6543;
-  animation: nudge 1.7s ease-in-out infinite;
+  margin: -6px 0 0;
+  color: #fff;
+  font-size: clamp(1.25rem, 4vw, 1.5rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .composer-wrap {
@@ -524,16 +519,6 @@ footer {
   }
 }
 
-@keyframes nudge {
-  0%,
-  100% {
-    transform: translateY(1px);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
 @keyframes float-away {
   0% {
     opacity: 0;
@@ -569,7 +554,7 @@ footer {
   }
 
   .intro {
-    margin-top: 48px;
+    margin-top: 8px;
   }
 
   .intro-kicker {
@@ -579,10 +564,6 @@ footer {
   .stage {
     --scene-size: min(58vw, 280px);
     min-height: 276px;
-  }
-
-  .tap-hint {
-    margin-top: -11px;
   }
 
   .composer-wrap {
@@ -608,8 +589,7 @@ footer {
     scroll-behavior: auto !important;
   }
 
-  .aura-outer,
-  .tap-hint span {
+  .aura-outer {
     animation: none;
   }
 

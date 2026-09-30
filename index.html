@@ -13,9 +13,9 @@
     <link rel="apple-touch-icon" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/moktak.png" />
     <link rel="preload" as="image" href="./assets/mallet.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260930-mono" />
+    <link rel="stylesheet" href="./styles.css?v=20260930-count" />
     <script defer src="./config.js"></script>
-    <script defer src="./app.js?v=20260930-layout"></script>
+    <script defer src="./app.js?v=20260930-count"></script>
   </head>
   <body>
     <div class="app" id="app">
@@ -77,7 +77,7 @@
             </div>
           </div>
 
-          <p class="tap-hint"><span aria-hidden="true">↟</span> 목탁을 눌러보세요</p>
+          <output class="tap-count" id="myTapCount" aria-label="오늘 목탁 타수" aria-live="off">0</output>
         </section>
       </main>
 

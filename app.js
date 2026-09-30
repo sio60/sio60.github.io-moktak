@@ -3,6 +3,7 @@
 
   const MAX_MESSAGE_LENGTH = 36;
   const MESSAGE_COOLDOWN_MS = 1400;
+  const TAP_STORAGE_KEY = "innerpeace:taps:v1";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const config = window.INNERPEACE_CONFIG ?? {};
 
@@ -20,12 +21,13 @@
   const charCount = document.querySelector("#charCount");
   const messageSky = document.querySelector("#messageSky");
   const toast = document.querySelector("#toast");
+  const myTapCount = document.querySelector("#myTapCount");
 
   const clientId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
   let ringIndex = 0;
   let particleIndex = 0;
-  let lastPointerStrike = 0;
+  let dailyTaps = readDailyTaps();
   let lastMessageAt = 0;
   let lastTapAt = 0;
   let combo = 0;
@@ -54,21 +56,16 @@
 
   setupInstagramLink();
   connectRealtime();
+  renderTapCount();
 
   button.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    event.preventDefault();
-    lastPointerStrike = performance.now();
     beginStrike();
   });
 
-  button.addEventListener("click", () => {
+  button.addEventListener("click", (event) => {
     // 키보드·보조기술의 가상 클릭만 처리하고 pointerdown 뒤의 click은 무시합니다.
-    if (performance.now() - lastPointerStrike > 500) beginStrike();
-  });
-
-  button.addEventListener("keydown", (event) => {
-    if (event.key === " " || event.key === "Enter") event.preventDefault();
+    if (event.detail === 0) beginStrike();
   });
 
   input.addEventListener("input", () => {
@@ -115,6 +112,7 @@
   }
 
   function registerImpact() {
+    incrementTapCount();
     const now = performance.now();
     combo = now - lastTapAt < 330 ? Math.min(combo + 1, 24) : 1;
     lastTapAt = now;
@@ -137,6 +135,40 @@
     if (navigator.vibrate && now - (registerImpact.lastVibrate ?? 0) > 72) {
       navigator.vibrate(8);
       registerImpact.lastVibrate = now;
+    }
+  }
+
+  function localDateKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
+
+  function readDailyTaps() {
+    const date = localDateKey();
+    try {
+      const stored = JSON.parse(localStorage.getItem(TAP_STORAGE_KEY));
+      if (stored?.date === date && Number.isSafeInteger(stored.count) && stored.count >= 0) {
+        return { date, count: stored.count };
+      }
+    } catch {
+      // 저장소를 사용할 수 없어도 현재 화면에서는 타수를 셉니다.
+    }
+    return { date, count: 0 };
+  }
+
+  function renderTapCount() {
+    myTapCount.textContent = dailyTaps.count.toLocaleString("ko-KR");
+  }
+
+  function incrementTapCount() {
+    const date = localDateKey();
+    if (dailyTaps.date !== date) dailyTaps = { date, count: 0 };
+    dailyTaps.count += 1;
+    renderTapCount();
+    try {
+      localStorage.setItem(TAP_STORAGE_KEY, JSON.stringify(dailyTaps));
+    } catch {
+      // 저장 실패는 타격 애니메이션에 영향을 주지 않습니다.
     }
   }
 
