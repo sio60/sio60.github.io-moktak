@@ -390,6 +390,37 @@ main {
 }
 
 /* Keep the normal layout in place while docking only the input above the OSK. */
+.app.is-composing {
+  height: var(--rest-app-height);
+  min-height: var(--rest-app-height);
+  padding: var(--rest-app-padding);
+}
+
+.app.is-composing .stage {
+  --scene-size: var(--rest-scene-size);
+  flex: 0 0 var(--rest-stage-height);
+  height: var(--rest-stage-height);
+  min-height: var(--rest-stage-height);
+}
+
+.app.is-composing .intro {
+  flex-shrink: 0;
+  height: var(--rest-intro-height);
+  margin-top: var(--rest-intro-margin);
+}
+
+.app.is-composing .intro-copy {
+  display: var(--rest-copy-display);
+}
+
+.app.is-composing .intro-kicker {
+  margin-bottom: var(--rest-kicker-margin);
+}
+
+.app.is-composing footer {
+  display: var(--rest-footer-display);
+}
+
 .app.is-composing .composer-slot {
   min-height: var(--composer-height);
 }
@@ -397,7 +428,8 @@ main {
 .app.is-composing .composer-wrap {
   position: fixed;
   left: var(--composer-left);
-  bottom: var(--composer-inset, 0px);
+  top: var(--composer-top);
+  bottom: auto;
   width: var(--composer-width);
   padding-top: 8px;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
@@ -540,23 +572,6 @@ footer {
 .toast.is-visible {
   opacity: 1;
   transform: translate(-50%, 0);
-}
-
-.keyboard-debug {
-  position: fixed;
-  z-index: 100;
-  top: 60px;
-  left: 8px;
-  max-width: calc(100vw - 16px);
-  margin: 0;
-  padding: 8px;
-  border: 1px solid #666;
-  border-radius: 4px;
-  background: #161616;
-  color: #fff;
-  font: 11px/1.4 monospace;
-  white-space: pre-wrap;
-  pointer-events: none;
 }
 
 .sr-only {

@@ -5,12 +5,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
-
 const scriptPath = path.join(__dirname, "..", "composer-viewport.js");
 
-// These are measurement/event regression tests, not a real Android WebView or
-// OS-keyboard emulator. Passing them does not verify on-device input visibility.
-
+// Geometry/event regression tests, not an Android or Instagram native-keyboard
+// emulator. Passing these does not establish that a device exposes useful API
+// measurements or that its keyboard actually leaves the composer visible.
 function eventTarget() {
   const listeners = new Map();
   return {
@@ -18,118 +17,110 @@ function eventTarget() {
       if (!listeners.has(type)) listeners.set(type, []);
       listeners.get(type).push(listener);
     },
-    removeEventListener(type, listener) {
-      listeners.set(type, (listeners.get(type) || []).filter((item) => item !== listener));
-    },
     dispatch(type, details = {}) {
-      const event = {
-        type,
-        button: 0,
-        defaultPrevented: false,
-        preventDefault() { this.defaultPrevented = true; },
-        ...details,
-      };
+      const event = { type, button: 0, defaultPrevented: false,
+        preventDefault() { this.defaultPrevented = true; }, ...details };
       for (const listener of listeners.get(type) || []) listener(event);
       return event;
     },
   };
 }
 
-function createHarness({ visualViewport = true, resizeObserver = true, virtualKeyboard = false, navigator = true, search = "" } = {}) {
+function createHarness({ visualViewport = true, resizeObserver = true,
+  virtualKeyboard = false, navigator = true, overlaySetter = "accept", rectGetter = "accept" } = {}) {
   const properties = new Map();
+  const writes = [];
   const classNames = new Set();
   const callbacks = new Map();
   const timers = new Map();
   const observed = [];
-  const appended = [];
+  const geometry = { appHeight: 800, stageHeight: 420, sceneSize: 288,
+    appPadding: "16px 18px 24px", skyBottom: 820, slotLeft: 18, slotWidth: 324 };
   let nextFrame = 0;
   let nextTimer = 0;
   let clock = 0;
-
+  let overlays = false;
+  let overlayWrites = 0;
+  const rect = (left, top, width, height) => ({ left, top, right: left + width,
+    bottom: top + height, width, height });
   const app = {
-    append(element) { appended.push(element); },
+    getBoundingClientRect() { return rect(0, 0, 360, geometry.appHeight); },
     style: {
-      setProperty(name, value) { properties.set(name, String(value)); },
-      removeProperty(name) { const value = properties.get(name) || ""; properties.delete(name); return value; },
+      setProperty(name, value) { properties.set(name, String(value)); writes.push([name, String(value)]); },
+      removeProperty(name) { properties.delete(name); },
       getPropertyValue(name) { return properties.get(name) || ""; },
     },
     classList: {
-      add(name) { classNames.add(name); },
-      remove(name) { classNames.delete(name); },
+      toggle(name, enabled) { if (enabled) classNames.add(name); else classNames.delete(name); },
       contains(name) { return classNames.has(name); },
-      toggle(name, force) {
-        const enabled = force === undefined ? !classNames.has(name) : force;
-        if (enabled) classNames.add(name);
-        else classNames.delete(name);
-        return enabled;
-      },
     },
   };
+  const stage = { getBoundingClientRect() { return rect(0, 230, 360, geometry.stageHeight); } };
+  const scene = { getBoundingClientRect() { return rect(36, 260, geometry.sceneSize, geometry.sceneSize); } };
+  const intro = { getBoundingClientRect() { return rect(0, 40, 360, 190); } };
+  const copy = {};
+  const kicker = {};
+  const footer = {};
+  const sky = { getBoundingClientRect() { return rect(0, 0, 360, geometry.skyBottom); } };
   const input = eventTarget();
-  input.value = "PRIVATE-MESSAGE-MUST-NOT-APPEAR";
   const submit = eventTarget();
   const form = {
     ...eventTarget(),
     contains(element) { return [form, input, submit].includes(element); },
     getBoundingClientRect() {
       const bounds = wrap.getBoundingClientRect();
-      return { ...bounds, top: bounds.top + 8, height: 54, bottom: bounds.top + 62 };
+      return rect(bounds.left, bounds.top + 8, bounds.width, 54);
     },
-    querySelector(selector) {
-      assert.equal(selector, 'button[type="submit"]');
-      return submit;
-    },
+    querySelector(selector) { assert.equal(selector, 'button[type="submit"]'); return submit; },
   };
   const documentElement = { clientHeight: 800, clientWidth: 360 };
-  const slot = {
-    style: app.style,
-    getBoundingClientRect() { return { left: 18, right: 342, top: 680, bottom: 760, width: 324, height: 80 }; },
-  };
+  const slot = { getBoundingClientRect() { return rect(geometry.slotLeft, 680, geometry.slotWidth, 80); } };
   const wrap = {
-    offsetHeight: 80,
     getBoundingClientRect() {
-      const inset = Number.parseFloat(properties.get("--composer-inset")) || 0;
-      const layoutHeight = documentElement.clientHeight || window.innerHeight;
-      const bottom = classNames.has("is-composing") ? layoutHeight - inset : 760;
-      return { left: 18, right: 342, top: bottom - 80, bottom, width: 324, height: 80 };
+      const focused = classNames.has("is-composing");
+      // Focus hides the metadata and changes padding: 80px normal, 70px docked.
+      const height = focused ? 70 : 80;
+      const top = focused ? Number.parseFloat(properties.get("--composer-top")) || 0 : 680;
+      return rect(geometry.slotLeft, top, geometry.slotWidth, height);
     },
   };
   const document = {
-    activeElement: null,
-    documentElement,
-    createElement(tagName) {
-      assert.equal(tagName, "pre");
-      return {
-        className: "",
-        textContent: "",
-        attributes: {},
-        setAttribute(name, value) { this.attributes[name] = value; },
-      };
-    },
+    activeElement: null, documentElement,
     querySelector(selector) {
-      const elements = { "#app": app, "#messageForm": form, "#messageInput": input, ".composer-slot": slot, ".composer-wrap": wrap };
+      const elements = { "#app": app, "#messageForm": form, "#messageInput": input,
+        "#messageSky": sky, "#stage": stage, "#moktakScene": scene,
+        ".intro": intro, ".intro-copy": copy, ".intro-kicker": kicker, "footer": footer,
+        ".composer-slot": slot, ".composer-wrap": wrap };
       assert.ok(selector in elements, `Unexpected selector: ${selector}`);
       return elements[selector];
     },
   };
-  const viewport = visualViewport ? { ...eventTarget(), height: 800, width: 360, offsetTop: 0, offsetLeft: 0, scale: 1 } : undefined;
+  const viewport = visualViewport ? { ...eventTarget(), height: 800, width: 360,
+    offsetTop: 0, offsetLeft: 0, scale: 1 } : undefined;
+  const keyboardRect = rect(0, 0, 0, 0);
   const keyboard = virtualKeyboard ? {
     ...eventTarget(),
-    boundingRect: { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 },
-    overlaysContent: false,
+    get boundingRect() {
+      if (rectGetter === "throw") throw new Error("WebView rejected keyboard geometry");
+      return keyboardRect;
+    },
+    get overlaysContent() { return overlays; },
+    set overlaysContent(value) {
+      overlayWrites++;
+      if (overlaySetter === "throw") throw new Error("WebView rejected overlaysContent");
+      if (overlaySetter === "accept") overlays = value;
+    },
   } : undefined;
   const window = {
-    ...eventTarget(),
-    innerHeight: 800,
-    innerWidth: 360,
-    visualViewport: viewport,
-    location: { search },
+    ...eventTarget(), innerHeight: 800, innerWidth: 360, visualViewport: viewport,
+    getComputedStyle(element) {
+      assert.ok([app, intro, copy, kicker, footer].includes(element));
+      return { padding: geometry.appPadding, marginTop: "8px", marginBottom: "6px", display: "block" };
+    },
     requestAnimationFrame(callback) { const id = ++nextFrame; callbacks.set(id, callback); return id; },
     cancelAnimationFrame(id) { callbacks.delete(id); },
     setTimeout(callback, delay = 0) {
-      const id = ++nextTimer;
-      timers.set(id, { callback, delay, due: clock + delay });
-      return id;
+      const id = ++nextTimer; timers.set(id, { callback, delay, due: clock + delay }); return id;
     },
     clearTimeout(id) { timers.delete(id); },
   };
@@ -137,52 +128,36 @@ function createHarness({ visualViewport = true, resizeObserver = true, virtualKe
   class FakeResizeObserver {
     constructor(callback) { this.callback = callback; }
     observe(element) { observed.push(element); }
-    disconnect() {}
   }
-  if (resizeObserver) window.ResizeObserver = FakeResizeObserver;
-  const context = {
-    window,
-    document,
-    requestAnimationFrame: window.requestAnimationFrame,
-    cancelAnimationFrame: window.cancelAnimationFrame,
-    URLSearchParams,
-    console,
-  };
+  const context = { window, document, console, requestAnimationFrame: window.requestAnimationFrame,
+    cancelAnimationFrame: window.cancelAnimationFrame };
   if (resizeObserver) context.ResizeObserver = FakeResizeObserver;
   vm.runInNewContext(fs.readFileSync(scriptPath, "utf8"), context, { filename: scriptPath });
-
   function flushFrame() {
-    const queued = [...callbacks.values()];
-    callbacks.clear();
+    const queued = [...callbacks.values()]; callbacks.clear();
     for (const callback of queued) callback(16);
   }
   function advanceTime(milliseconds) {
     const targetTime = clock + milliseconds;
     for (;;) {
-      const next = [...timers.entries()]
-        .filter(([, timer]) => timer.due <= targetTime)
+      const next = [...timers.entries()].filter(([, timer]) => timer.due <= targetTime)
         .sort((a, b) => a[1].due - b[1].due)[0];
       if (!next) break;
-      const [id, timer] = next;
-      clock = timer.due;
-      timers.delete(id);
-      timer.callback();
+      const [id, timer] = next; clock = timer.due; timers.delete(id); timer.callback();
     }
     clock = targetTime;
   }
-  function focus() {
-    document.activeElement = input;
-    input.dispatch("focus");
-    form.dispatch("focusin", { target: input });
-    flushFrame();
+  function focus({ flush = true } = {}) {
+    document.activeElement = input; input.dispatch("focus"); form.dispatch("focusin", { target: input });
+    if (flush) flushFrame();
   }
   function blur() {
-    document.activeElement = null;
-    input.dispatch("blur");
-    form.dispatch("focusout", { target: input, relatedTarget: null });
-    flushFrame();
+    document.activeElement = null; input.dispatch("blur");
+    form.dispatch("focusout", { target: input, relatedTarget: null }); flushFrame();
   }
-  return { app, input, submit, form, document, window, viewport, keyboard, properties, classNames, callbacks, timers, observed, appended, slot, wrap, flushFrame, advanceTime, focus, blur };
+  return { app, input, submit, form, document, window, viewport, keyboard, keyboardRect,
+    properties, writes, classNames, callbacks, timers, observed, geometry, stage, scene, sky, slot, wrap,
+    flushFrame, advanceTime, focus, blur, get overlayWrites() { return overlayWrites; } };
 }
 
 function pixels(harness, property) {
@@ -190,312 +165,196 @@ function pixels(harness, property) {
   assert.match(value || "", /^-?\d+(?:\.\d+)?px$/, `${property} should use CSS pixels`);
   return Number.parseFloat(value);
 }
+function assertDocked(harness, bottom) {
+  assert.equal(pixels(harness, "--composer-top"), bottom - 70);
+  assert.equal(harness.wrap.getBoundingClientRect().bottom, bottom);
+}
+function restGeometry(harness) {
+  return Object.fromEntries(["--composer-height", "--rest-app-height", "--rest-stage-height",
+    "--rest-scene-size", "--rest-app-padding", "--rest-intro-height", "--rest-intro-margin",
+    "--rest-copy-display", "--rest-kicker-margin", "--rest-footer-display"].map((name) => [name, harness.properties.get(name)]));
+}
 
-test("visual-only keyboard raises the focused composer by the hidden area", () => {
-  const harness = createHarness();
-  harness.viewport.height = 450;
-  harness.focus();
-  assert.equal(harness.classNames.has("is-composing"), true);
-  assert.equal(pixels(harness, "--composer-inset"), 350);
-  assert.equal(pixels(harness, "--composer-left"), 18);
-  assert.equal(pixels(harness, "--composer-width"), 324);
-  assert.equal(pixels(harness, "--composer-height"), 80);
+test("focus synchronously preserves normal geometry and docks only the focused composer", () => {
+  const h = createHarness(); h.viewport.height = 450; h.focus({ flush: false });
+  assert.equal(h.classNames.has("is-composing"), true); assertDocked(h, 450);
+  assert.equal(pixels(h, "--composer-left"), 18); assert.equal(pixels(h, "--composer-width"), 324);
+  assert.deepEqual(restGeometry(h), { "--composer-height": "80px", "--rest-app-height": "800px",
+    "--rest-stage-height": "420px", "--rest-scene-size": "288px", "--rest-app-padding": "16px 18px 24px",
+    "--rest-intro-height": "190px", "--rest-intro-margin": "8px", "--rest-copy-display": "block",
+    "--rest-kicker-margin": "6px", "--rest-footer-display": "block" });
+  assert.equal(h.properties.has("--app-height"), false, "do not shrink the app shell");
+  assert.equal(h.properties.has("--composer-inset"), false, "use direct top coordinates");
 });
-
-test("visual viewport pan is subtracted instead of double-counted", () => {
-  const harness = createHarness();
-  harness.focus();
-  harness.viewport.height = 450;
-  harness.viewport.offsetTop = 80;
-  harness.viewport.dispatch("scroll");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 270);
+test("visual viewport pan contributes offsetTop exactly once", () => {
+  const h = createHarness(); h.focus(); h.viewport.height = 450; h.viewport.offsetTop = 80;
+  h.viewport.dispatch("scroll"); h.flushFrame(); assertDocked(h, 530);
 });
-
-test("resizes-content keyboard needs no extra bottom offset", () => {
-  const harness = createHarness();
-  harness.document.documentElement.clientHeight = 450;
-  harness.window.innerHeight = 450;
-  harness.viewport.height = 450;
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
-  assert.equal(harness.classNames.has("is-composing"), true);
+test("resizes-content keyboard docks without a second upward offset", () => {
+  const h = createHarness(); h.focus(); h.document.documentElement.clientHeight = 450;
+  h.window.innerHeight = 450; h.viewport.height = 450; h.viewport.dispatch("resize"); h.flushFrame();
+  assertDocked(h, 450); assert.equal(pixels(h, "--rest-app-height"), 800);
 });
-
-test("closing the keyboard resets the offset while the input remains focused", () => {
-  const harness = createHarness();
-  harness.viewport.height = 450;
-  harness.focus();
-  harness.viewport.height = 800;
-  harness.viewport.dispatch("resize");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
+test("keyboard close while focused restores the edge without recapturing the scene", () => {
+  const h = createHarness(); h.focus(); const frozen = restGeometry(h);
+  for (const height of [450, 800]) {
+    h.viewport.height = height; h.viewport.dispatch("resize"); h.flushFrame(); assertDocked(h, height);
+    assert.deepEqual(restGeometry(h), frozen);
+  }
+  assert.equal(h.classNames.has("is-composing"), true);
 });
-
-test("unchanged geometry without viewport APIs is an undetectable overlay limitation, not proof of visibility", () => {
-  const harness = createHarness({ visualViewport: false, resizeObserver: false });
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
-  harness.window.dispatch("resize");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
+test("page stage scene padding and slot geometry stay captured once throughout a focus session", () => {
+  const h = createHarness(); h.focus(); const frozen = restGeometry(h);
+  Object.assign(h.geometry, { appHeight: 470, stageHeight: 276, sceneSize: 240,
+    appPadding: "11px 18px 8px", slotLeft: 22, slotWidth: 400 });
+  h.window.innerHeight = 470; h.viewport.height = 470; h.window.dispatch("resize"); h.flushFrame();
+  assertDocked(h, 470); assert.deepEqual(restGeometry(h), frozen);
+  assert.equal(pixels(h, "--composer-left"), 22); assert.equal(pixels(h, "--composer-width"), 400);
+  h.advanceTime(800); h.flushFrame(); assert.deepEqual(restGeometry(h), frozen);
+  for (const property of Object.keys(frozen)) {
+    assert.equal(h.writes.filter(([name]) => name === property).length, 1, property);
+  }
+  h.blur(); h.focus(); assert.equal(pixels(h, "--rest-stage-height"), 276);
+  assert.equal(pixels(h, "--rest-scene-size"), 240);
 });
-
-test("shrinking innerHeight is used even when VisualViewport is present but stale", () => {
-  const harness = createHarness();
-  harness.window.innerHeight = 440;
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 360);
-  assert.equal(pixels(harness, "--float-distance"), -405);
+test("shrinking innerHeight wins when VisualViewport is stale", () => {
+  const h = createHarness(); h.window.innerHeight = 440; h.focus(); assertDocked(h, 440);
+  assert.equal(pixels(h, "--float-distance"), -405);
 });
-
-test("innerHeight remains a usable keyboard signal without VisualViewport", () => {
-  const harness = createHarness({ visualViewport: false, resizeObserver: false });
-  harness.focus();
-  harness.window.innerHeight = 430;
-  harness.window.dispatch("resize");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 370);
+test("innerHeight works without VisualViewport or ResizeObserver", () => {
+  const h = createHarness({ visualViewport: false, resizeObserver: false }); h.focus();
+  h.window.innerHeight = 430; h.window.dispatch("resize"); h.flushFrame(); assertDocked(h, 430);
 });
-
-test("document height may fall back to innerHeight when layout clientHeight is zero", () => {
-  const harness = createHarness();
-  harness.document.documentElement.clientHeight = 0;
-  harness.window.innerHeight = 800;
-  harness.viewport.height = 460;
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 340);
+test("zero layout height falls back to valid inner and visual measurements", () => {
+  const h = createHarness(); h.document.documentElement.clientHeight = 0;
+  h.viewport.height = 460; h.focus(); assertDocked(h, 460);
 });
-
-test("nonpositive and nonfinite viewport signals cannot poison a valid measured edge", () => {
-  const harness = createHarness();
-  harness.window.innerHeight = 0;
-  harness.viewport.height = Number.NaN;
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
-  harness.viewport.height = 450;
-  harness.window.innerHeight = Number.POSITIVE_INFINITY;
-  harness.viewport.dispatch("resize");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 350);
+test("nonpositive and nonfinite values cannot poison a valid measured edge", () => {
+  const h = createHarness(); h.window.innerHeight = 0; h.viewport.height = Number.NaN; h.focus();
+  assertDocked(h, 800); h.window.innerHeight = Number.POSITIVE_INFINITY; h.viewport.height = 450;
+  h.viewport.dispatch("resize"); h.flushFrame(); assertDocked(h, 450);
 });
-
-test("available docked VirtualKeyboard geometry raises composer without enabling overlays", () => {
-  const harness = createHarness({ virtualKeyboard: true });
-  Object.assign(harness.keyboard.boundingRect, { top: 420, y: 420, width: 360, height: 380, bottom: 800 });
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 380);
-  assert.equal(harness.keyboard.overlaysContent, false);
-  Object.assign(harness.keyboard.boundingRect, { top: 400, y: 400, height: 400 });
-  harness.keyboard.dispatch("geometrychange");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 400);
+test("VirtualKeyboard opts into overlay geometry before input focus", () => {
+  const h = createHarness({ virtualKeyboard: true });
+  assert.equal(h.keyboard.overlaysContent, true); assert.equal(h.overlayWrites, 1);
+  Object.assign(h.keyboardRect, { top: 420, width: 360, height: 380 }); h.focus(); assertDocked(h, 420);
+  Object.assign(h.keyboardRect, { top: 400, height: 400 });
+  h.keyboard.dispatch("geometrychange"); h.flushFrame(); assertDocked(h, 400);
 });
-
-test("narrow floating, hidden, and zero-top keyboard rectangles do not supply a docked edge", () => {
-  const harness = createHarness({ virtualKeyboard: true });
-  harness.focus();
-  for (const bounds of [
-    { top: 300, width: 180, height: 300 },
-    { top: 420, width: 360, height: 0 },
-    { top: 0, width: 360, height: 300 },
-  ]) {
-    Object.assign(harness.keyboard.boundingRect, bounds);
-    harness.keyboard.dispatch("geometrychange");
-    harness.flushFrame();
-    assert.equal(pixels(harness, "--composer-inset"), 0);
+test("rejected and ignored overlay setters keep the viewport fallback usable", () => {
+  for (const overlaySetter of ["throw", "ignore"]) {
+    const h = createHarness({ virtualKeyboard: true, overlaySetter });
+    assert.equal(h.keyboard.overlaysContent, false); assert.equal(h.overlayWrites, 1);
+    h.viewport.height = 450; h.focus(); assertDocked(h, 450);
   }
 });
-
-test("all available valid edges compete and a valid keyboard hide restores full height", () => {
-  const harness = createHarness({ virtualKeyboard: true });
-  harness.window.innerHeight = 480;
-  harness.viewport.height = 430;
-  harness.viewport.offsetTop = 20;
-  Object.assign(harness.keyboard.boundingRect, { top: 440, width: 216, height: 360 });
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 360);
-  assert.equal(pixels(harness, "--float-distance"), -386);
-  harness.window.innerHeight = 800;
-  harness.viewport.height = 800;
-  harness.viewport.offsetTop = 0;
-  Object.assign(harness.keyboard.boundingRect, { top: 0, height: 0 });
-  harness.keyboard.dispatch("geometrychange");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
-  assert.equal(harness.classNames.has("is-composing"), true);
+test("a throwing keyboard geometry getter does not break viewport docking", () => {
+  const h = createHarness({ virtualKeyboard: true, rectGetter: "throw" });
+  h.viewport.height = 470; h.focus(); assertDocked(h, 470);
 });
-
-test("missing navigator is supported without requiring VirtualKeyboard", () => {
-  const harness = createHarness({ navigator: false });
-  harness.viewport.height = 470;
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 330);
+test("VirtualKeyboard top is a client coordinate and does not get visual offset added", () => {
+  const h = createHarness({ virtualKeyboard: true }); h.viewport.offsetTop = 80; h.viewport.height = 600;
+  Object.assign(h.keyboardRect, { top: 430, width: 360, height: 370 }); h.focus(); assertDocked(h, 430);
 });
-
-test("a window scroll refreshes the measured bottom when no viewport event is emitted", () => {
-  const harness = createHarness();
-  harness.focus();
-  harness.window.innerHeight = 425;
-  harness.window.dispatch("scroll");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 375);
+test("narrow floating hidden and zero-top rectangles do not supply a docked keyboard edge", () => {
+  const h = createHarness({ virtualKeyboard: true }); h.focus();
+  for (const bounds of [{ top: 300, width: 180, height: 300 },
+    { top: 420, width: 360, height: 0 }, { top: 0, width: 360, height: 300 }]) {
+    Object.assign(h.keyboardRect, bounds); h.keyboard.dispatch("geometrychange"); h.flushFrame();
+    assertDocked(h, 800);
+  }
 });
-
-test("three bounded focus settle checks catch delayed metrics without resize events", () => {
-  const harness = createHarness();
-  harness.focus();
-  assert.deepEqual([...harness.timers.values()].map((timer) => timer.delay).sort((a, b) => a - b), [100, 350, 800]);
+test("the earliest valid viewport or keyboard edge is used and keyboard hide restores it", () => {
+  const h = createHarness({ virtualKeyboard: true }); h.window.innerHeight = 480;
+  h.viewport.height = 430; h.viewport.offsetTop = 20;
+  Object.assign(h.keyboardRect, { top: 440, width: 216, height: 360 }); h.focus(); assertDocked(h, 440);
+  assert.equal(pixels(h, "--float-distance"), -386);
+  h.window.innerHeight = 800; h.viewport.height = 800; h.viewport.offsetTop = 0;
+  Object.assign(h.keyboardRect, { top: 0, height: 0 }); h.keyboard.dispatch("geometrychange");
+  h.flushFrame(); assertDocked(h, 800);
+});
+test("missing navigator does not prevent the visual viewport fallback", () => {
+  const h = createHarness({ navigator: false }); h.viewport.height = 470; h.focus(); assertDocked(h, 470);
+});
+test("window scroll updates changed metrics without a viewport event", () => {
+  const h = createHarness(); h.focus(); h.window.innerHeight = 425;
+  h.window.dispatch("scroll"); h.flushFrame(); assertDocked(h, 425);
+});
+test("three bounded settle checks catch delayed metrics without resize events", () => {
+  const h = createHarness(); h.focus();
+  assert.deepEqual([...h.timers.values()].map((t) => t.delay).sort((a, b) => a - b), [100, 350, 800]);
   for (const [advance, height] of [[100, 600], [250, 480], [450, 430]]) {
-    harness.window.innerHeight = height;
-    harness.advanceTime(advance);
-    harness.flushFrame();
-    assert.equal(pixels(harness, "--composer-inset"), 800 - height);
+    h.window.innerHeight = height; h.advanceTime(advance); h.flushFrame(); assertDocked(h, height);
   }
-  assert.equal(harness.timers.size, 0);
-  harness.advanceTime(5000);
-  assert.equal(harness.callbacks.size, 0);
+  assert.equal(h.timers.size, 0); h.advanceTime(5000); assert.equal(h.callbacks.size, 0);
 });
-
-test("focus and blur replace pending settle checks with bounded opening and closing sequences", () => {
-  const harness = createHarness();
-  harness.focus();
-  const first = [...harness.timers.keys()];
-  harness.focus();
-  assert.equal(harness.timers.size, 3);
-  assert.ok(first.every((id) => !harness.timers.has(id)));
-  const opening = [...harness.timers.keys()];
-  harness.blur();
-  assert.equal(harness.timers.size, 3);
-  assert.ok(opening.every((id) => !harness.timers.has(id)));
-  assert.equal(harness.classNames.has("is-composing"), false);
-  assert.equal(harness.properties.has("--composer-inset"), false);
-  assert.equal(harness.properties.has("--message-bottom"), false);
+test("repeated focus and blur replace timers instead of accumulating them", () => {
+  const h = createHarness(); h.focus();
   for (let cycle = 0; cycle < 4; cycle++) {
-    const closing = [...harness.timers.keys()];
-    harness.focus();
-    assert.equal(harness.timers.size, 3);
-    assert.ok(closing.every((id) => !harness.timers.has(id)));
-    harness.blur();
-    assert.equal(harness.timers.size, 3);
+    const opening = [...h.timers.keys()]; h.blur(); assert.equal(h.timers.size, 3);
+    assert.ok(opening.every((id) => !h.timers.has(id)));
+    const closing = [...h.timers.keys()]; h.focus(); assert.equal(h.timers.size, 3);
+    assert.ok(closing.every((id) => !h.timers.has(id)));
   }
-  harness.advanceTime(1000);
-  harness.flushFrame();
-  assert.equal(harness.timers.size, 0);
-  assert.equal(harness.callbacks.size, 0);
+  h.blur(); h.advanceTime(1000); h.flushFrame();
+  assert.equal(h.timers.size, 0); assert.equal(h.callbacks.size, 0);
 });
-
-test("pagehide cancels pending settle checks and the scheduled animation frame", () => {
-  const harness = createHarness();
-  harness.focus();
-  harness.window.dispatch("resize");
-  assert.equal(harness.callbacks.size, 1);
-  assert.equal(harness.timers.size, 3);
-  harness.window.dispatch("pagehide");
-  assert.equal(harness.callbacks.size, 0);
-  assert.equal(harness.timers.size, 0);
-  harness.advanceTime(1000);
-  assert.equal(harness.callbacks.size, 0);
+test("pagehide cancels the settle timers and queued animation frame", () => {
+  const h = createHarness(); h.focus(); h.window.dispatch("resize");
+  assert.equal(h.callbacks.size, 1); assert.equal(h.timers.size, 3); h.window.dispatch("pagehide");
+  assert.equal(h.callbacks.size, 0); assert.equal(h.timers.size, 0);
+  h.advanceTime(1000); assert.equal(h.callbacks.size, 0);
 });
-
-test("unchanged geometry with viewport APIs reports zero inset without claiming the keyboard is visible", () => {
-  const harness = createHarness({ virtualKeyboard: true });
-  harness.focus();
-  harness.advanceTime(800);
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
-  assert.equal(harness.classNames.has("has-keyboard-inset"), false);
-});
-
-test("on-device diagnostics are opt-in and do not reveal the message text", () => {
-  const harness = createHarness({ search: "?v=keyboard2&keyboardDebug=1" });
-  assert.equal(harness.appended.length, 1);
-  harness.window.innerHeight = 430;
-  harness.focus();
-  const text = harness.appended[0].textContent;
-  assert.match(text, /KEYBOARD 2/);
-  assert.match(text, /focus ON/);
-  assert.match(text, /inner 430/);
-  assert.match(text, /edge 430/);
-  assert.equal(text.includes(harness.input.value), false);
-});
-
-test("ordinary URLs and nonexact debug flags do not display diagnostics", () => {
-  for (const search of ["", "?keyboardDebug=0", "?keyboardDebug=10", "?notkeyboardDebug=1"]) {
-    const harness = createHarness({ search });
-    assert.equal(harness.appended.length, 0, search || "ordinary URL");
+test("unchanged API geometry stays at the reported edge rather than inventing keyboard dimensions", () => {
+  for (const options of [{}, { visualViewport: false, resizeObserver: false }, { virtualKeyboard: true }]) {
+    const h = createHarness(options); h.focus(); h.advanceTime(800); h.flushFrame(); assertDocked(h, 800);
+    assert.equal(pixels(h, "--rest-app-height"), 800);
   }
+  // This deliberately does NOT prove visibility in a no-signal overlay WebView.
 });
-
-test("bursts of viewport and window events are coalesced into one animation frame", () => {
-  const harness = createHarness();
-  harness.flushFrame();
-  harness.viewport.dispatch("resize");
-  harness.viewport.dispatch("scroll");
-  harness.window.dispatch("resize");
-  harness.window.dispatch("orientationchange");
-  harness.window.dispatch("pageshow");
-  assert.equal(harness.callbacks.size, 1);
-  harness.flushFrame();
-  assert.equal(harness.callbacks.size, 0);
+test("viewport and window event bursts coalesce to one frame", () => {
+  const h = createHarness(); h.flushFrame(); h.viewport.dispatch("resize"); h.viewport.dispatch("scroll");
+  h.window.dispatch("resize"); h.window.dispatch("orientationchange"); h.window.dispatch("pageshow");
+  assert.equal(h.callbacks.size, 1); h.flushFrame(); assert.equal(h.callbacks.size, 0);
 });
-
-test("leaving the form clears the focused positioning mode", () => {
-  const harness = createHarness();
-  harness.viewport.height = 450;
-  harness.focus();
-  harness.blur();
-  assert.equal(harness.classNames.has("is-composing"), false);
-  assert.equal(harness.classNames.has("has-keyboard-inset"), false);
-  for (const property of ["--composer-height", "--composer-left", "--composer-width", "--composer-inset", "--message-bottom", "--float-distance"]) {
-    assert.equal(harness.properties.has(property), false, `${property} should be removed after focus exits`);
+test("blur clears temporary geometry without removing unrelated app properties", () => {
+  const h = createHarness(); h.app.style.setProperty("--brand-setting", "keep");
+  h.viewport.height = 450; h.focus(); h.blur(); assert.equal(h.classNames.has("is-composing"), false);
+  assert.equal(h.classNames.has("has-keyboard-inset"), false);
+  for (const property of ["--composer-height", "--composer-left", "--composer-width", "--composer-top",
+    "--message-bottom", "--float-distance", "--rest-app-height", "--rest-stage-height", "--rest-scene-size", "--rest-app-padding",
+    "--rest-intro-height", "--rest-intro-margin", "--rest-copy-display", "--rest-kicker-margin", "--rest-footer-display"]) {
+    assert.equal(h.properties.has(property), false, `${property} should clear on blur`);
   }
+  assert.equal(h.properties.get("--brand-setting"), "keep");
 });
-
-test("message origins follow the raised form and animation distance uses visible height", () => {
-  const harness = createHarness();
-  harness.viewport.height = 450;
-  harness.focus();
-  assert.equal(harness.classNames.has("has-keyboard-inset"), true);
-  assert.equal(pixels(harness, "--message-bottom"), 438);
-  assert.equal(pixels(harness, "--float-distance"), -414);
-  harness.viewport.offsetTop = 80;
-  harness.viewport.dispatch("scroll");
-  harness.flushFrame();
-  assert.equal(pixels(harness, "--message-bottom"), 358);
+test("message origin uses actual sky and focused form rectangles, not layout clientHeight", () => {
+  const h = createHarness(); h.viewport.height = 450; h.focus(); assertDocked(h, 450);
+  assert.equal(pixels(h, "--message-bottom"), 448); // 820 - (380 + 8) + 16
+  assert.equal(pixels(h, "--float-distance"), -414);
+  h.geometry.skyBottom = 860; h.viewport.offsetTop = 80; h.viewport.dispatch("scroll"); h.flushFrame();
+  assert.equal(pixels(h, "--message-bottom"), 408); // 860 - (460 + 8) + 16
 });
-
-test("negative viewport differences cannot move the composer below the viewport", () => {
-  const harness = createHarness();
-  harness.viewport.height = 810;
-  harness.viewport.offsetTop = 2;
-  harness.focus();
-  assert.equal(pixels(harness, "--composer-inset"), 0);
-  assert.equal(harness.classNames.has("has-keyboard-inset"), false);
+test("very short visible space clamps composer top to the visual viewport top", () => {
+  const h = createHarness(); h.viewport.offsetTop = 100; h.viewport.height = 40; h.focus();
+  assert.equal(pixels(h, "--composer-top"), 100);
 });
-
-test("primary send press preserves input focus but unrelated pointer actions are untouched", () => {
-  const harness = createHarness();
-  harness.focus();
-  assert.equal(harness.submit.dispatch("pointerdown", { button: 0 }).defaultPrevented, true);
-  assert.equal(harness.submit.dispatch("pointerdown", { button: 2 }).defaultPrevented, false);
-  harness.document.activeElement = null;
-  assert.equal(harness.submit.dispatch("pointerdown", { button: 0 }).defaultPrevented, false);
+test("a visual edge beyond layout bounds cannot push the composer below the viewport", () => {
+  const h = createHarness(); h.viewport.height = 810; h.viewport.offsetTop = 2; h.focus(); assertDocked(h, 800);
 });
-
-test("focus moving within the form keeps composing mode", () => {
-  const harness = createHarness();
-  harness.focus();
-  harness.document.activeElement = harness.submit;
-  harness.input.dispatch("blur", { relatedTarget: harness.submit });
-  harness.form.dispatch("focusout", { relatedTarget: harness.submit });
-  harness.form.dispatch("focusin", { target: harness.submit });
-  harness.flushFrame();
-  assert.equal(harness.classNames.has("is-composing"), true);
+test("primary send preserves input focus but other pointer actions are untouched", () => {
+  const h = createHarness(); h.focus();
+  assert.equal(h.submit.dispatch("pointerdown", { button: 0 }).defaultPrevented, true);
+  assert.equal(h.submit.dispatch("pointerdown", { button: 2 }).defaultPrevented, false);
+  h.document.activeElement = null;
+  assert.equal(h.submit.dispatch("pointerdown", { button: 0 }).defaultPrevented, false);
 });
-
-test("ResizeObserver tracks both the flow slot and the composer", () => {
-  const harness = createHarness();
-  assert.ok(harness.observed.includes(harness.slot));
-  assert.ok(harness.observed.includes(harness.wrap));
+test("moving focus within the form preserves composing mode and original scene geometry", () => {
+  const h = createHarness(); h.focus(); const frozen = restGeometry(h); h.document.activeElement = h.submit;
+  h.input.dispatch("blur", { relatedTarget: h.submit }); h.form.dispatch("focusout", { relatedTarget: h.submit });
+  h.form.dispatch("focusin", { target: h.submit }); h.flushFrame();
+  assert.equal(h.classNames.has("is-composing"), true); assert.deepEqual(restGeometry(h), frozen);
+});
+test("ResizeObserver watches the original flow slot and actual composer", () => {
+  const h = createHarness(); assert.ok(h.observed.includes(h.slot)); assert.ok(h.observed.includes(h.wrap));
 });

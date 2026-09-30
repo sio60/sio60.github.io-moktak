@@ -6,19 +6,26 @@
   const input = document.querySelector("#messageInput");
   const slot = document.querySelector(".composer-slot");
   const composer = document.querySelector(".composer-wrap");
+  const messageSky = document.querySelector("#messageSky");
+  const stage = document.querySelector("#stage");
+  const scene = document.querySelector("#moktakScene");
+  const intro = document.querySelector(".intro");
+  const introCopy = document.querySelector(".intro-copy");
+  const kicker = document.querySelector(".intro-kicker");
+  const footer = document.querySelector("footer");
   const sendButton = form.querySelector('button[type="submit"]');
   const viewport = window.visualViewport;
   const virtualKeyboard = window.navigator?.virtualKeyboard;
-  const debugEnabled = /(?:^|[?&])keyboardDebug=1(?:&|$)/.test(window.location?.search ?? "");
-  const debug = debugEnabled ? document.createElement("pre") : null;
   let frame = 0;
   let composing = false;
   let settleTimers = [];
 
-  if (debug) {
-    debug.className = "keyboard-debug";
-    debug.setAttribute("aria-label", "키보드 화면 상태, 입력 내용은 포함하지 않습니다");
-    app.append(debug);
+  // Request keyboard geometry without asking the browser to resize the page.
+  // Reading boundingRect alone does not opt in to this Chromium API.
+  try {
+    if (virtualKeyboard) virtualKeyboard.overlaysContent = true;
+  } catch {
+    // Safari and embedded browsers may not support control of keyboard overlays.
   }
 
   function positive(value) {
@@ -34,7 +41,8 @@
     // Never treat an API being present as proof that its dimensions are current.
     const bottomEdges = [layoutHeight, window.innerHeight];
     if (positive(viewport?.height)) bottomEdges.push(visibleTop + viewport.height);
-    const keyboard = virtualKeyboard?.boundingRect;
+    let keyboard;
+    try { keyboard = virtualKeyboard?.boundingRect; } catch { /* Use viewport signals. */ }
     if (positive(keyboard?.height) && positive(keyboard?.top) &&
       keyboard.width >= document.documentElement.clientWidth * 0.6) {
       bottomEdges.push(keyboard.top);
@@ -46,11 +54,19 @@
     if (focused) {
       if (!composing) {
         app.style.setProperty("--composer-height", `${composer.getBoundingClientRect().height}px`);
+        app.style.setProperty("--rest-app-height", `${app.getBoundingClientRect().height}px`);
+        app.style.setProperty("--rest-stage-height", `${stage.getBoundingClientRect().height}px`);
+        app.style.setProperty("--rest-scene-size", `${scene.getBoundingClientRect().width}px`);
+        app.style.setProperty("--rest-app-padding", window.getComputedStyle(app).padding);
+        app.style.setProperty("--rest-intro-height", `${intro.getBoundingClientRect().height}px`);
+        app.style.setProperty("--rest-intro-margin", window.getComputedStyle(intro).marginTop);
+        app.style.setProperty("--rest-copy-display", window.getComputedStyle(introCopy).display);
+        app.style.setProperty("--rest-kicker-margin", window.getComputedStyle(kicker).marginBottom);
+        app.style.setProperty("--rest-footer-display", window.getComputedStyle(footer).display);
       }
       const bounds = slot.getBoundingClientRect();
       app.style.setProperty("--composer-left", `${bounds.left}px`);
       app.style.setProperty("--composer-width", `${bounds.width}px`);
-      app.style.setProperty("--composer-inset", `${inset}px`);
     }
 
     app.classList.toggle("is-composing", focused);
@@ -58,29 +74,23 @@
     composing = focused;
 
     if (focused) {
-      // Read the docked form, not a guessed keyboard height, for message origins.
+      // Measure AFTER hiding the counter and applying the focused padding.
+      // Anchor the top directly: fixed-position layout bounds can differ from
+      // clientHeight in an embedded browser, so a calculated bottom is unsafe.
+      const height = composer.getBoundingClientRect().height;
+      app.style.setProperty("--composer-top", `${Math.max(visibleTop, visibleBottom - height)}px`);
       const formTop = form.getBoundingClientRect().top;
-      app.style.setProperty("--message-bottom", `${Math.max(96, layoutHeight - formTop + 16)}px`);
+      app.style.setProperty("--message-bottom", `${Math.max(96, messageSky.getBoundingClientRect().bottom - formTop + 16)}px`);
       app.style.setProperty("--float-distance", `${-Math.round(visibleHeight * 0.92)}px`);
     } else {
       for (const property of ["--composer-height", "--composer-left", "--composer-width",
-        "--composer-inset", "--message-bottom", "--float-distance"]) {
+        "--composer-top", "--message-bottom", "--float-distance", "--rest-app-height",
+        "--rest-stage-height", "--rest-scene-size", "--rest-app-padding", "--rest-intro-height",
+        "--rest-intro-margin", "--rest-copy-display", "--rest-kicker-margin", "--rest-footer-display"]) {
         app.style.removeProperty(property);
       }
     }
 
-    if (debug) {
-      const bounds = form.getBoundingClientRect();
-      const round = (value) => Number.isFinite(value) ? Math.round(value) : "—";
-      debug.textContent = [
-        "KEYBOARD 2 · 화면 수치만 표시 / 전송 없음",
-        `focus ${focused ? "ON" : "OFF"} | lift ${round(inset)} | scroll ${round(window.scrollY)}`,
-        `layout ${round(layoutHeight)} | inner ${round(window.innerHeight)}`,
-        `visual ${round(viewport?.height)} | offset ${round(visibleTop)}`,
-        `keyboard top ${round(keyboard?.top)} | height ${round(keyboard?.height)}`,
-        `input ${round(bounds.top)} ~ ${round(bounds.bottom)} | edge ${round(visibleBottom)}`,
-      ].join("\n");
-    }
   }
 
   function scheduleUpdate() {
@@ -89,7 +99,9 @@
 
   function settleViewport() {
     settleTimers.forEach((timer) => window.clearTimeout(timer));
-    scheduleUpdate();
+    if (frame) window.cancelAnimationFrame(frame);
+    // Capture the resting page size during focus, before native keyboard resize.
+    update();
     // Native keyboard animation can finish without a corresponding resize event.
     settleTimers = [100, 350, 800].map((delay) => window.setTimeout(scheduleUpdate, delay));
   }

@@ -61,4 +61,4 @@ Publishable Key는 브라우저에서 사용하는 공개 키입니다. Secret K
 
 `node --test tests/composer-viewport.test.cjs`로 표시 영역 축소, 화면 이동, 포커스와 전송 버튼 처리를 확인합니다. DOM 모형 기반 테스트이므로 실제 Android/iOS 및 Instagram 내장 브라우저에서 키보드 열기·닫기 확인도 필요합니다.
 
-내장 브라우저 확인이 필요하면 주소 뒤에 `?keyboardDebug=1`을 붙여 화면 높이와 입력창 위치를 표시합니다. 입력한 글이나 사용자 정보는 표시·수집·전송하지 않습니다. WebView 호스트가 키보드 영역을 웹페이지에 알리지 않는 경우에는 이 수치만으로 정확한 키보드 위치를 알아낼 수 없으므로 실제 기기 확인이 필요합니다.
+입력 시 기존 페이지와 목탁 크기는 유지하고 입력창만 표시 영역의 하단에 맞춥니다. 지원되는 Chromium 브라우저에서는 VirtualKeyboard의 overlay 모드에 참여해 실제 키보드 영역을 읽습니다. 미지원 환경은 VisualViewport와 innerHeight를 사용합니다. WebView 호스트가 모든 키보드 영역 정보를 숨기는 경우 웹 코드만으로 정확한 위치를 알아낼 수 없으므로 실제 기기 확인이 필요합니다.
