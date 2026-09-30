@@ -203,12 +203,138 @@ main {
   justify-content: center;
 }
 
+.practice-status {
+  margin: 7px auto 0;
+  width: min(240px, 80%);
+}
+
+.practice-status p {
+  margin: 0 0 8px;
+  min-height: 1.4em;
+  color: #a3998c;
+  font-size: 0.67rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-meter {
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  background: #252019;
+  border-radius: 2px;
+}
+
+.practice-meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #856641, #e8c488);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms ease-out;
+}
+
+.practice-vision {
+  --reveal: 0;
+  position: absolute;
+  z-index: 0;
+  inset: 4px -12px 0;
+  isolation: isolate;
+  pointer-events: none;
+}
+
+.buddha-image {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  opacity: calc(var(--reveal) * 0.86);
+  transform: translateX(-50%);
+  -webkit-mask-image: linear-gradient(#000 68%, transparent 99%);
+  mask-image: linear-gradient(#000 68%, transparent 99%);
+  transition: opacity 350ms ease-out;
+}
+
+.buddha-halo {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  width: min(84%, 470px);
+  height: 76%;
+  opacity: calc(var(--reveal) * 0.7);
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 35%, #d796302c, #9450130c 46%, transparent 70%);
+  transition: opacity 350ms ease-out;
+}
+
+.practice-wave {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  width: min(80%, 420px);
+  aspect-ratio: 1;
+  border: 1px solid #e8bf7877;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, #ffda8e30, #ffce7412 40%, transparent 70%);
+  box-shadow: 0 0 50px #ffc26214;
+  transform: translate(-50%, -50%) scale(.6);
+}
+
+.practice-motes {
+  position: absolute;
+  inset: 0;
+}
+
+.practice-mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffe0a0;
+  box-shadow: 0 0 9px #edb352;
+  opacity: 0;
+}
+
+.practice-reward {
+  position: absolute;
+  z-index: 16;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  min-height: 44px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 2px 14px #000, 0 0 20px #000;
+}
+
+.practice-reward strong,
+.practice-reward span {
+  display: block;
+}
+
+.practice-reward strong {
+  color: #e9c892;
+  font-size: 0.87rem;
+  font-weight: 500;
+}
+
+.practice-reward span {
+  margin-top: 7px;
+  color: #b8a994;
+  font-size: 0.65rem;
+}
+
 .moktak-scene {
   position: relative;
   z-index: 8;
   width: var(--scene-size);
   height: calc(var(--scene-size) * 0.94);
-  margin-top: -2px;
+  margin-top: 86px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -514,7 +640,7 @@ footer {
 
 .message-sky {
   position: fixed;
-  z-index: 2;
+  z-index: 10;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
@@ -664,6 +790,12 @@ footer {
 
   .aura-outer {
     animation: none;
+  }
+
+  .buddha-image,
+  .buddha-halo,
+  .practice-meter span {
+    transition: none;
   }
 
   .floating-message {

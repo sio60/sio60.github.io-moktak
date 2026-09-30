@@ -1,0 +1,9 @@
+Generated with the built-in image generation tool.
+Use case: stylized-concept
+Asset type: transparent background reveal asset behind a wooden moktak in a black meditation web app.
+Primary request: A single elegant seated meditating Buddha statue, viewed straight from the front, serene closed eyes, symmetrical relaxed meditation pose, hands resting together in lap, sitting cross-legged on a simple low lotus base.
+Style: realistic finely sculpted dark bronze statue with restrained aged golden highlights, beautiful calm face, natural metallic patina, museum-quality sculpture, no human skin. This will emerge slowly from darkness as a user taps.
+Composition: centered whole seated figure, portrait 2:3 framing, all of head, knees, and low base visible, some clean padding around silhouette. Head in upper quarter, lap in lower middle. Crisp readable silhouette at small mobile sizes.
+Lighting: warm soft light on forehead, cheekbones, shoulders and garment folds, dim rich bronze shadows, subtle gold edges. No bright white reflections.
+Background: genuinely transparent PNG alpha outside statue. No baked background, no floor, no surrounding scene, no glow or halo (those will be animated with CSS).
+Constraints: exactly one Buddha statue, respectful tranquil pose, no text, letters, numbers, logos or watermark; no other objects, people, ornate throne, jewelry, smoke or floating particles. Clean cutout.

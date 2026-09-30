@@ -24,6 +24,16 @@
   const myTapCount = document.querySelector("#myTapCount");
   const onlineCount = document.querySelector("#onlineCount");
   const onlineStatus = document.querySelector("#onlineStatus");
+  const practice = window.InnerpeacePracticeProgress;
+  const practiceVision = document.querySelector("#practiceVision");
+  const practiceHint = document.querySelector("#practiceHint");
+  const practiceMeter = document.querySelector("#practiceMeter");
+  const practiceFill = document.querySelector("#practiceFill");
+  const practiceReward = document.querySelector("#practiceReward");
+  const practiceRewardTitle = document.querySelector("#practiceRewardTitle");
+  const practiceRewardDetail = document.querySelector("#practiceRewardDetail");
+  const practiceWave = document.querySelector("#practiceWave");
+  const practiceMotes = document.querySelector("#practiceMotes");
 
   const clientId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -58,6 +68,15 @@
     particle.style.setProperty("--size", `${3 + (index % 4)}px`);
     effects.append(particle);
     return particle;
+  });
+
+  const rewardMotes = Array.from({ length: reducedMotion ? 0 : 16 }, (_, index) => {
+    const mote = document.createElement("span");
+    mote.className = "practice-mote";
+    mote.style.left = `${15 + (index * 29) % 70}%`;
+    mote.style.top = `${26 + (index * 17) % 50}%`;
+    practiceMotes.append(mote);
+    return mote;
   });
 
   setupInstagramLink();
@@ -181,13 +200,61 @@
 
   function renderTapCount() {
     myTapCount.textContent = dailyTaps.count.toLocaleString("ko-KR");
+    renderPractice();
+  }
+
+  function renderPractice() {
+    const progress = practice.getPracticeProgress(dailyTaps.count);
+    practiceVision.style.setProperty("--reveal", progress.reveal.toFixed(4));
+    practiceFill.style.transform = `scaleX(${progress.cycleProgress})`;
+    practiceMeter.setAttribute("aria-valuenow", String(Math.round(progress.cycleProgress * 108)));
+    practiceHint.textContent = progress.count === 0
+      ? "108번 두드리면 빛이 퍼집니다."
+      : progress.completedRounds > 0 && progress.cycleProgress === 1
+        ? `${progress.completedRounds}회 수련 완료. 한 번 더 두드려보세요.`
+        : `${progress.completedRounds > 0 ? `${progress.completedRounds}회 수련 | ` : ""}빛이 퍼지기까지 ${progress.remaining}번`;
+  }
+
+  function celebratePractice(milestone) {
+    practiceRewardTitle.textContent = milestone.title;
+    practiceRewardDetail.textContent = milestone.detail;
+    practiceReward.getAnimations().forEach((animation) => animation.cancel());
+    practiceReward.animate(
+      [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.78 }, { opacity: 0 }],
+      { duration: 3600, easing: "ease-in-out" },
+    );
+    if (milestone.kind !== "complete" || reducedMotion) return;
+    // A single slow wave gives feedback without rapidly flashing the screen.
+    practiceWave.getAnimations().forEach((animation) => animation.cancel());
+    practiceWave.animate(
+      [
+        { opacity: 0, transform: "translate(-50%, -50%) scale(.55)" },
+        { opacity: 0.75, offset: 0.25 },
+        { opacity: 0, transform: "translate(-50%, -50%) scale(1.6)" },
+      ],
+      { duration: 2400, easing: "cubic-bezier(.2,.65,.3,1)" },
+    );
+    rewardMotes.forEach((mote, index) => {
+      mote.getAnimations().forEach((animation) => animation.cancel());
+      mote.animate(
+        [
+          { opacity: 0, transform: "translateY(18px) scale(.5)" },
+          { opacity: 0.9, offset: 0.2 },
+          { opacity: 0, transform: `translate(${(index % 2 ? 1 : -1) * 22}px, -100px) scale(.3)` },
+        ],
+        { duration: 2400 + (index % 4) * 220, delay: index * 35, easing: "ease-out" },
+      );
+    });
   }
 
   function incrementTapCount() {
     const date = localDateKey();
     if (dailyTaps.date !== date) dailyTaps = { date, count: 0 };
+    const previousCount = dailyTaps.count;
     dailyTaps.count += 1;
     renderTapCount();
+    const milestone = practice.getMilestone(previousCount, dailyTaps.count);
+    if (milestone) celebratePractice(milestone);
     try {
       localStorage.setItem(TAP_STORAGE_KEY, JSON.stringify(dailyTaps));
     } catch {
