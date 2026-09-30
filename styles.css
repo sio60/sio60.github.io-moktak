@@ -425,21 +425,17 @@ main {
   min-height: var(--composer-height);
 }
 
-.app.is-composing .composer-wrap {
+.app.is-keyboard-docked .composer-wrap {
   position: fixed;
   left: var(--composer-left);
   top: var(--composer-top);
   bottom: auto;
   width: var(--composer-width);
   padding-top: 8px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
-}
-
-.app.is-composing.has-keyboard-inset .composer-wrap {
   padding-bottom: 8px;
 }
 
-.app.is-composing .composer-meta {
+.app.is-keyboard-docked .composer-meta {
   display: none;
 }
 

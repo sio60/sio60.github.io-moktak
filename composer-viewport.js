@@ -15,41 +15,71 @@
   const footer = document.querySelector("footer");
   const sendButton = form.querySelector('button[type="submit"]');
   const viewport = window.visualViewport;
-  const virtualKeyboard = window.navigator?.virtualKeyboard;
   let frame = 0;
   let composing = false;
-  let settleTimers = [];
+  let docked = false;
+  let settleTimer = 0;
+  let baseline;
 
-  // Request keyboard geometry without asking the browser to resize the page.
-  // Reading boundingRect alone does not opt in to this Chromium API.
-  try {
-    if (virtualKeyboard) virtualKeyboard.overlaysContent = true;
-  } catch {
-    // Safari and embedded browsers may not support control of keyboard overlays.
-  }
+  // Keep native keyboard avoidance enabled. In particular, do not opt into
+  // VirtualKeyboard overlays: affected Android versions report corrupt rects.
 
   function positive(value) {
     return Number.isFinite(value) && value > 0;
   }
 
+  function measureViewport() {
+    const scale = positive(viewport?.scale) ? viewport.scale : 1;
+    const height = positive(viewport?.height) ? viewport.height : 0;
+    return {
+      width: document.documentElement.clientWidth,
+      innerHeight: positive(window.innerHeight) ? window.innerHeight :
+        (positive(document.documentElement.clientHeight) ? document.documentElement.clientHeight : height),
+      visualHeight: height * scale,
+      height,
+      top: Number.isFinite(viewport?.offsetTop) ? Math.max(0, viewport.offsetTop) : 0,
+      scale,
+    };
+  }
+
+  function rememberViewport(measurement) {
+    const sameWidth = baseline && Math.abs(baseline.width - measurement.width) < 80;
+    baseline = {
+      ...measurement,
+      // Blur can arrive before the keyboard's closing animation completes.
+      // Don't learn that temporarily reduced height as the resting viewport.
+      innerHeight: sameWidth ? Math.max(baseline.innerHeight, measurement.innerHeight) : measurement.innerHeight,
+      visualHeight: sameWidth ? Math.max(baseline.visualHeight, measurement.visualHeight) : measurement.visualHeight,
+    };
+  }
+
+  function keyboardViewport(measurement) {
+    if (!baseline || Math.abs(measurement.scale - baseline.scale) > 0.05) return null;
+    const isKeyboardReduction = (reduction) => docked ? reduction > 40 : reduction >= 96;
+    // Choose ONE source. A stale small innerHeight must never override a
+    // working VisualViewport, nor should panning cancel a height reduction.
+    if (positive(measurement.height) && isKeyboardReduction(baseline.visualHeight - measurement.visualHeight)) {
+      return { top: measurement.top, height: measurement.height };
+    }
+    if (isKeyboardReduction(baseline.innerHeight - measurement.innerHeight)) {
+      return { top: 0, height: measurement.innerHeight };
+    }
+    return null;
+  }
+
   function update() {
     frame = 0;
     const focused = form.contains(document.activeElement);
-    const layoutHeight = document.documentElement.clientHeight || window.innerHeight;
-    const visibleTop = viewport?.offsetTop ?? 0;
-    // Some WebViews update innerHeight before (or instead of) visualViewport.
-    // Never treat an API being present as proof that its dimensions are current.
-    const bottomEdges = [layoutHeight, window.innerHeight];
-    if (positive(viewport?.height)) bottomEdges.push(visibleTop + viewport.height);
-    let keyboard;
-    try { keyboard = virtualKeyboard?.boundingRect; } catch { /* Use viewport signals. */ }
-    if (positive(keyboard?.height) && positive(keyboard?.top) &&
-      keyboard.width >= document.documentElement.clientWidth * 0.6) {
-      bottomEdges.push(keyboard.top);
+    const measurement = measureViewport();
+    if (!baseline || !focused) rememberViewport(measurement);
+    if (baseline && Math.abs(baseline.width - measurement.width) >= 80) {
+      // Rotation is not a keyboard opening. Reflow once for the new width,
+      // then preserve that layout rather than a portrait-sized frozen stage.
+      app.classList.remove("is-composing", "is-keyboard-docked");
+      composing = false;
+      docked = false;
+      rememberViewport(measurement);
     }
-    const visibleBottom = Math.min(...bottomEdges.filter(positive));
-    const visibleHeight = Math.max(0, visibleBottom - Math.min(visibleTop, visibleBottom));
-    const inset = Math.max(0, layoutHeight - visibleBottom);
 
     if (focused) {
       if (!composing) {
@@ -70,19 +100,28 @@
     }
 
     app.classList.toggle("is-composing", focused);
-    app.classList.toggle("has-keyboard-inset", focused && inset > 0);
     composing = focused;
+    const visible = focused ? keyboardViewport(measurement) : null;
+    // A near-zero animation reading is not permission to send the input to
+    // the top of the screen. Retain native flow if no usable area is exposed.
+    docked = Boolean(visible && visible.height >= composer.getBoundingClientRect().height + 24);
+    app.classList.toggle("is-keyboard-docked", docked);
 
-    if (focused) {
+    if (docked) {
       // Measure AFTER hiding the counter and applying the focused padding.
       // Anchor the top directly: fixed-position layout bounds can differ from
       // clientHeight in an embedded browser, so a calculated bottom is unsafe.
       const height = composer.getBoundingClientRect().height;
-      app.style.setProperty("--composer-top", `${Math.max(visibleTop, visibleBottom - height)}px`);
+      app.style.setProperty("--composer-top", `${visible.top + visible.height - height}px`);
       const formTop = form.getBoundingClientRect().top;
       app.style.setProperty("--message-bottom", `${Math.max(96, messageSky.getBoundingClientRect().bottom - formTop + 16)}px`);
-      app.style.setProperty("--float-distance", `${-Math.round(visibleHeight * 0.92)}px`);
+      app.style.setProperty("--float-distance", `${-Math.round(visible.height * 0.92)}px`);
     } else {
+      for (const property of ["--composer-top", "--message-bottom", "--float-distance"]) {
+        app.style.removeProperty(property);
+      }
+    }
+    if (!focused) {
       for (const property of ["--composer-height", "--composer-left", "--composer-width",
         "--composer-top", "--message-bottom", "--float-distance", "--rest-app-height",
         "--rest-stage-height", "--rest-scene-size", "--rest-app-padding", "--rest-intro-height",
@@ -98,14 +137,18 @@
   }
 
   function settleViewport() {
-    settleTimers.forEach((timer) => window.clearTimeout(timer));
+    window.clearTimeout(settleTimer);
     if (frame) window.cancelAnimationFrame(frame);
     // Capture the resting page size during focus, before native keyboard resize.
     update();
-    // Native keyboard animation can finish without a corresponding resize event.
-    settleTimers = [100, 350, 800].map((delay) => window.setTimeout(scheduleUpdate, delay));
+    // One follow-up for hosts that finish their metrics after focus. Never
+    // force a scroll or guess a keyboard height when all metrics stay unchanged.
+    settleTimer = window.setTimeout(scheduleUpdate, 350);
   }
 
+  input.addEventListener("pointerdown", () => {
+    if (!composing) rememberViewport(measureViewport());
+  });
   input.addEventListener("focus", settleViewport);
   input.addEventListener("blur", settleViewport);
   form.addEventListener("focusin", scheduleUpdate);
@@ -116,10 +159,9 @@
   window.addEventListener("pageshow", scheduleUpdate);
   viewport?.addEventListener("resize", scheduleUpdate);
   viewport?.addEventListener("scroll", scheduleUpdate);
-  virtualKeyboard?.addEventListener("geometrychange", scheduleUpdate);
   window.addEventListener("pagehide", () => {
-    settleTimers.forEach((timer) => window.clearTimeout(timer));
-    settleTimers = [];
+    window.clearTimeout(settleTimer);
+    settleTimer = 0;
     if (frame) window.cancelAnimationFrame(frame);
     frame = 0;
   });
